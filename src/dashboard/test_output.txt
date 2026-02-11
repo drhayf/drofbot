@@ -1,0 +1,35 @@
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/dev/drofbot/src/dashboard[39m
+
+ [31mΓ¥»[39m src/stores/__tests__/identity-store.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[90m 9[2mms[22m[39m
+[31m   [31m├ù[31m useIdentityStore[2m > [22mshould fetch data successfully and calculate milestones[90m 7[2mms[22m[31m[39m
+[31m     ΓåÆ expected '[vitest] No "intelligenceApi" export ΓÇª' to be null[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 1 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  src/stores/__tests__/identity-store.test.ts > useIdentityStore > should fetch data successfully and calculate milestones
+AssertionError: expected '[vitest] No "intelligenceApi" export ΓÇª' to be null
+
+- Expected: 
+null
+
++ Received: 
+"[vitest] No \"intelligenceApi\" export is defined on the \"../../api/client\" mock. Did you forget to return it from \"vi.mock\"?
+If you need to partially mock a module, you can use \"importOriginal\" helper inside:
+"
+
+ Γ¥» src/stores/__tests__/identity-store.test.ts:78:25
+     76|     const state = useIdentityStore.getState();
+     77|     expect(state.isLoading).toBe(false);
+     78|     expect(state.error).toBeNull();
+       |                         ^
+     79|     expect(state.profile).toBeDefined();
+     80|     expect(state.milestones.length).toBeGreaterThan(0);
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 00:12:10
+[2m   Duration [22m 1.36s[2m (transform 55ms, setup 85ms, collect 108ms, tests 9ms, environment 447ms, prepare 85ms)[22m
+

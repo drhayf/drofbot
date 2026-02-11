@@ -1,0 +1,28 @@
+[Unit]
+Description=Drofbot Agent — Sovereign Intelligence
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=drofbot
+Group=drofbot
+WorkingDirectory=/opt/drofbot
+ExecStart=/usr/bin/node drofbot.mjs gateway run --force
+Restart=always
+RestartSec=5
+StandardOutput=append:/opt/drofbot/logs/drofbot.log
+StandardError=append:/opt/drofbot/logs/drofbot.log
+
+# Environment
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/drofbot/.env
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/drofbot /home/drofbot/.drofbot /home/drofbot/.openclaw
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

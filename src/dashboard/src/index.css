@@ -1,0 +1,240 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Drofbot Dashboard — "Quiet Intelligence" Design System
+ *
+ * Light backgrounds with paper warmth.
+ * Single accent: deep sage. Typography does the work.
+ * Every pixel justified.
+ */
+
+:root {
+  /* Ground — warm light backgrounds with paper-like quality */
+  --ground-1: #f8f6f1;
+  --ground-2: #f0ede6;
+  --ground-3: #e8e4db;
+  --ground-4: #ddd8cd;
+
+  /* Ink — text hierarchy through weight, not color variety */
+  --ink-1: #1a1816;
+  --ink-2: #4a4640;
+  --ink-3: #8a8580;
+  --ink-4: #b5b0a8;
+
+  /* Accent — ONE color used sparingly */
+  --accent: #2c5a4a;
+  --accent-light: #3d7a66;
+  --accent-subtle: rgba(44, 90, 74, 0.08);
+
+  /* Semantic */
+  --positive: #3d7a56;
+  --caution: #8a7a3d;
+  --negative: #8a4a3d;
+
+  /* Frequency bands */
+  --shadow: #7a5a6a;
+  --gift: #5a7a6a;
+  --siddhi: #7a7a5a;
+
+  /* Elements */
+  --fire: #b07050;
+  --water: #507090;
+  --air: #90905a;
+  --earth: #608050;
+  --ether: #706090;
+
+  /* Confidence */
+  --confidence-low: #b5b0a8;
+  --confidence-mid: #8a7a3d;
+  --confidence-high: #3d7a56;
+  --confidence-confirmed: #2c5a4a;
+
+  /* Surfaces */
+  --surface-raised: #ffffff;
+  --surface-inset: #f3f0e9;
+  --border: #e0dbd2;
+  --border-subtle: #ebe8e1;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(26, 24, 22, 0.04);
+  --shadow-md: 0 2px 8px rgba(26, 24, 22, 0.06);
+  --shadow-lg: 0 4px 16px rgba(26, 24, 22, 0.08);
+
+  /* Fonts */
+  --font-display: "Source Serif 4", Georgia, serif;
+  --font-body: "DM Sans", -apple-system, sans-serif;
+}
+
+/* Base typography */
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-1);
+  background-color: var(--ground-1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin: 0;
+}
+
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.375rem; }
+h3 { font-size: 1.125rem; }
+
+/* Tabular numbers for data */
+.data-value {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Loading pulse animation */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.loading-pulse {
+  animation: pulse-soft 1.5s ease-in-out infinite;
+  background-color: var(--ground-3);
+  border-radius: 4px;
+}
+
+/* Page transition */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.page-enter {
+  animation: fade-in 200ms ease-out;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ground-4);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-4);
+}
+
+/* ---- Dark Theme ---- */
+[data-theme="dark"] {
+  --ground-1: #1a1816;
+  --ground-2: #222019;
+  --ground-3: #2e2b24;
+  --ground-4: #3a362e;
+
+  --ink-1: #f0ede6;
+  --ink-2: #c5c0b8;
+  --ink-3: #8a8580;
+  --ink-4: #5a5650;
+
+  --accent: #5aa88a;
+  --accent-light: #6cc8a4;
+  --accent-subtle: rgba(90, 168, 138, 0.12);
+
+  --positive: #6cc8a4;
+  --caution: #c8b86c;
+  --negative: #c87860;
+
+  --surface-raised: #252320;
+  --surface-inset: #1e1c18;
+  --border: #3a362e;
+  --border-subtle: #302c26;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] body {
+  color: var(--ink-1);
+  background-color: var(--ground-1);
+}
+
+/* ---- Toast animations ---- */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 200ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-toast-out {
+  animation: toast-out 150ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 150ms ease-out;
+}
+
+/* ---- Safe area for iOS PWA ---- */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ---- Touch target minimum (44px Apple HIG) ---- */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ---- Focus visible for keyboard nav ---- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Prevent iOS zoom on input focus */
+@media (max-width: 639px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}

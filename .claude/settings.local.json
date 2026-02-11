@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"git branch --show-current; git status --short\")",
+      "Bash(powershell -ExecutionPolicy Bypass -Command:*)"
+    ]
+  }
+}

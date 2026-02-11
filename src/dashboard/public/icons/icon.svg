@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Deep sage radial gradient — center glow for depth -->
+    <radialGradient id="bg" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#345f50"/>
+      <stop offset="100%" stop-color="#1e3a30"/>
+    </radialGradient>
+    <!-- Subtle vignette overlay -->
+    <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.25"/>
+    </radialGradient>
+    <!-- Warm paper tone for the letterform -->
+    <linearGradient id="letterGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8f6f1"/>
+      <stop offset="100%" stop-color="#e8e4db"/>
+    </linearGradient>
+    <!-- Faint glow behind the letter -->
+    <radialGradient id="letterGlow" cx="50%" cy="48%" r="30%">
+      <stop offset="0%" stop-color="#f8f6f1" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#f8f6f1" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Orbital arc stroke gradient -->
+    <linearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8f6f1" stop-opacity="0.18"/>
+      <stop offset="50%" stop-color="#f8f6f1" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#f8f6f1" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background — deep sage with subtle radial warmth -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="96" fill="url(#vignette)"/>
+
+  <!-- Orbital arcs — quiet cosmic intelligence motif -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="url(#arcGrad)" stroke-width="0.8" opacity="0.5"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="url(#arcGrad)" stroke-width="0.6" opacity="0.35"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="url(#arcGrad)" stroke-width="0.5" opacity="0.2"/>
+
+  <!-- Small orbital dots — a quiet accent -->
+  <circle cx="370" cy="112" r="3" fill="#f8f6f1" opacity="0.35"/>
+  <circle cx="410" cy="200" r="2" fill="#f8f6f1" opacity="0.2"/>
+  <circle cx="130" cy="360" r="2.5" fill="#f8f6f1" opacity="0.25"/>
+
+  <!-- Letter glow -->
+  <circle cx="256" cy="256" r="160" fill="url(#letterGlow)"/>
+
+  <!-- D monogram — refined serif letterform -->
+  <text
+    x="256"
+    y="285"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="Georgia, 'Source Serif 4', serif"
+    font-weight="400"
+    font-size="300"
+    fill="url(#letterGrad)"
+    letter-spacing="-6"
+    opacity="0.95"
+  >D</text>
+</svg>

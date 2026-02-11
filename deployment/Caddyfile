@@ -1,0 +1,48 @@
+# =============================================================================
+# Drofbot Caddyfile — Reverse Proxy + Static Files
+# =============================================================================
+# Domain: dashboard.drofy.net
+#
+# When using Cloudflare Tunnel, Caddy listens on localhost only.
+# Cloudflare handles TLS termination; Caddy serves HTTP behind the tunnel.
+#
+# Usage:
+#   With Cloudflare Tunnel (recommended):
+#     The tunnel routes dashboard.drofy.net → localhost:8080
+#     Caddy listens on :8080 and serves the dashboard + proxies API.
+#
+#   Without tunnel (direct Caddy HTTPS):
+#     Replace :8080 with dashboard.drofy.net
+# =============================================================================
+
+:8080 {
+    # Serve dashboard static files
+    root * /opt/drofbot/dashboard-dist
+    file_server
+
+    # Proxy API requests to the Drofbot gateway process
+    handle /api/* {
+        reverse_proxy localhost:18789
+    }
+
+    # WebSocket upgrade for control/gateway connections
+    handle /ws {
+        reverse_proxy localhost:18789
+    }
+
+    # OpenClaw Control UI
+    handle /__openclaw__/* {
+        reverse_proxy localhost:18789
+    }
+
+    # SPA fallback — serve index.html for all non-file routes
+    try_files {path} /index.html
+
+    # Logging
+    log {
+        output file /opt/drofbot/logs/caddy-access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}

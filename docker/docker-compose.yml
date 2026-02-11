@@ -1,0 +1,72 @@
+version: "3.8"
+
+# Drofbot development stack
+# Usage: docker compose -f docker/docker-compose.yml up -d
+#
+# Brain/Hands mode:
+#   docker compose -f docker/docker-compose.yml --profile brain up -d
+#
+# Worker (runs on local machine, connects to Brain):
+#   docker compose -f docker/docker-compose.worker.yml up -d
+
+services:
+  # PostgreSQL + pgvector for hierarchical memory (Phase 2)
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: drofbot-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: drofbot
+      POSTGRES_PASSWORD: drofbot-dev
+      POSTGRES_DB: drofbot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../src/shared/database/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drofbot"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis for task queue pub/sub and caching (Phase 3)
+  redis:
+    image: redis:7-alpine
+    container_name: drofbot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Brain (VPS) — Gateway + channels + memory + LLM
+  brain:
+    profiles: ["brain"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.brain
+    container_name: drofbot-brain
+    restart: unless-stopped
+    ports:
+      - "18789:18789"
+    environment:
+      - OPENCLAW_SUPABASE_URL=postgresql://drofbot:drofbot-dev@postgres:5432/drofbot
+      - OPENCLAW_HANDS_ENABLED=true
+      - OPENCLAW_HANDS_WORKER_SECRET=${DROFBOT_WORKER_SECRET:-changeme}
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - OPENCLAW_GATEWAY_PASSWORD=${OPENCLAW_GATEWAY_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:

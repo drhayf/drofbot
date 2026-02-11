@@ -1,0 +1,26 @@
+version: "3.8"
+
+# Drofbot Hands Worker
+#
+# Runs on the local machine and connects to the Brain's Gateway WebSocket.
+#
+# Usage:
+#   DROFBOT_BRAIN_URL=wss://your-vps:18789 \
+#   DROFBOT_WORKER_SECRET=your-secret \
+#   docker compose -f docker/docker-compose.worker.yml up -d
+
+services:
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.hands
+    container_name: drofbot-worker
+    restart: unless-stopped
+    environment:
+      - OPENCLAW_HANDS_BRAIN_URL=${DROFBOT_BRAIN_URL:?Set DROFBOT_BRAIN_URL}
+      - OPENCLAW_HANDS_WORKER_SECRET=${DROFBOT_WORKER_SECRET:?Set DROFBOT_WORKER_SECRET}
+    volumes:
+      # Mount the home directory so the Worker can access local files
+      - ${HOME:-/home}:/home/user:rw
+    # Host networking for access to local services
+    network_mode: host
