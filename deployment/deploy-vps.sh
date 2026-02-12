@@ -20,8 +20,8 @@ NC='\033[0m' # No Color
 DROFBOT_DIR="/opt/drofbot"
 DROFBOT_USER="drofbot"
 DROFBOT_GROUP="drofbot"
-DOMAIN="${DOMAIN:-}"  # Set DOMAIN env var if you have one
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin@localhost}"
+DOMAIN="drofy.net"
+ADMIN_EMAIL="admin@drofy.net"
 
 # Environment variables (embedded for single-script deployment)
 SUPABASE_URL="https://xonmnzosnubojfawkaxh.supabase.co"
@@ -51,15 +51,8 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Ask for domain (optional)
-echo -e "${YELLOW}Do you have a domain name for this server? (y/n)${NC}"
-read -r HAS_DOMAIN
-if [ "$HAS_DOMAIN" = "y" ] || [ "$HAS_DOMAIN" = "Y" ]; then
-    echo -e "${YELLOW}Enter your domain (e.g., drofbot.example.com):${NC}"
-    read -r DOMAIN
-    echo -e "${YELLOW}Enter your admin email for SSL certificates:${NC}"
-    read -r ADMIN_EMAIL
-fi
+# Domain is pre-configured for SSL with Caddy
+echo -e "${BLUE}Deploying with domain: $DOMAIN${NC}"
 
 # Step 1: System Setup
 echo -e "${GREEN}[Step 1/7] System Setup${NC}"
