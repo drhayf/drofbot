@@ -113,11 +113,11 @@ fi
 chown -R "$DROFBOT_USER:$DROFBOT_GROUP" "$DROFBOT_DIR"
 
 # Step 3: Install dependencies
-# Disable corepack to prevent pnpm auto-update issues
+# Remove packageManager field to prevent pnpm auto-update (OOM issues on low-memory VPS)
 echo -e "${GREEN}[Step 3/7] Installing dependencies${NC}"
 cd "$DROFBOT_DIR"
-export COREPACK_ENABLE=0
-su - "$DROFBOT_USER" -c "cd $DROFBOT_DIR && COREPACK_ENABLE=0 pnpm install"
+sed -i '/"packageManager":/d' package.json
+su - "$DROFBOT_USER" -c "cd $DROFBOT_DIR && pnpm install"
 
 # Step 4: Build everything
 echo -e "${GREEN}[Step 4/7] Building backend and frontend${NC}"
@@ -131,7 +131,8 @@ su - "$DROFBOT_USER" -c "cd $DROFBOT_DIR/src/dashboard && pnpm run build"
 
 echo "Building Control UI..."
 if [ -d "$DROFBOT_DIR/ui" ]; then
-    su - "$DROFBOT_USER" -c "cd $DROFBOT_DIR/ui && COREPACK_ENABLE=0 pnpm install && pnpm run build"
+    sed -i '/"packageManager":/d' ui/package.json
+    su - "$DROFBOT_USER" -c "cd $DROFBOT_DIR/ui && pnpm install && pnpm run build"
 fi
 
 # Step 5: Create environment file
