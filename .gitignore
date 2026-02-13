@@ -67,8 +67,8 @@ src/dashboard/.env
 
 # Local untracked files
 .local/
-IDENTITY.md
-USER.md
+/IDENTITY.md
+/USER.md
 .tgz
 
 # local tooling
