@@ -70,7 +70,7 @@ apt install -y git build-essential curl wget unzip software-properties-common ap
 
 echo "Installing pnpm..."
 if ! command -v pnpm &> /dev/null; then
-    npm install -g pnpm
+    npm install -g pnpm@10.23.0
 fi
 
 echo "Installing Caddy..."
@@ -130,10 +130,8 @@ echo "Building dashboard..."
 su - "$DROFBOT_USER" -c "cd $DROFBOT_DIR/src/dashboard && pnpm run build"
 
 echo "Building Control UI..."
-if [ -d "$DROFBOT_DIR/ui" ]; then
-    sed -i '/"packageManager":/d' ui/package.json
-    su - "$DROFBOT_USER" -c "cd $DROFBOT_DIR/ui && pnpm config set enable-pre-post-scripts false && pnpm install && pnpm run build"
-fi
+# Use the root script which handles dependencies and build correctly
+su - "$DROFBOT_USER" -c "cd $DROFBOT_DIR && npm run ui:build"
 
 # Step 5: Create environment file
 echo -e "${GREEN}[Step 5/7] Creating environment file${NC}"
@@ -220,9 +218,13 @@ User=$DROFBOT_USER
 Group=$DROFBOT_GROUP
 WorkingDirectory=$DROFBOT_DIR
 EnvironmentFile=$DROFBOT_DIR/.env
+Environment="HOME=$DROFBOT_DIR"
 ExecStart=/usr/bin/node $DROFBOT_DIR/drofbot.mjs gateway run --port 18789 --force
-Restart=always
-RestartSec=10
+Restart=on-failure
+RestartSec=30s
+StartLimitIntervalSec=500
+StartLimitBurst=5
+KillMode=control-group
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=drofbot
@@ -245,10 +247,12 @@ if [ -n "$DOMAIN" ]; then
     # With domain - automatic HTTPS
     cat > /etc/caddy/Caddyfile << EOF
 # Drofbot Caddy Configuration
-$DOMAIN {
+{
     email $ADMIN_EMAIL
-    
-    # Dashboard
+}
+
+$DOMAIN {
+    # Dashboard (Custom)
     root * $DROFBOT_DIR/src/dashboard/dist
     file_server
     
@@ -261,11 +265,29 @@ $DOMAIN {
     handle /ws/* {
         reverse_proxy localhost:18789
     }
+
+    # OpenClaw Control UI (Gateway Internal)
+    handle /__openclaw__/* {
+        reverse_proxy localhost:18789
+    }
+
+    # OpenClaw Control UI (Direct Access fallback)
+    handle /control/* {
+        reverse_proxy localhost:18789
+    }
     
     # SPA fallback
     handle {
         try_files {path} /index.html
         file_server
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
     }
 }
 
