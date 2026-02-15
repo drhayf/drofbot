@@ -79,3 +79,4 @@ src/dashboard/.env
 .agent/*.json
 !.agent/workflows/
 /local/
+deployment/deploy-vps.sh

@@ -9,7 +9,7 @@
  *   - Type determination: Reflector / Manifestor / Generator / MG / Projector
  *     via defined centers + BFS motor-to-throat detection
  *   - Profile: from conscious/unconscious Sun gate lines
- *   - Design date: Sun longitude − 88° (solar arc)
+ *   - Design date: Sun longitude − 88° (solar arc) via Swiss Ephemeris
  *   - Gate activations from ecliptic longitude (re-uses iching.ts's
  *     longitudeToActivation)
  *
@@ -18,8 +18,16 @@
 
 import type { ArchetypeMapping, BirthMoment, CosmicState, CosmicSystem } from "../types.js";
 import { Element } from "../types.js";
+// Swiss Ephemeris for precise planetary positions
+import {
+  calculateDesignJulianDay,
+  getSunLongitude,
+  datetimeToJulian,
+  julianToDatetime,
+  calculateFullChartPositions,
+} from "./ephemeris.js";
 // Re-use the I-Ching gate activation algorithm
-import { approximateSunLongitude, longitudeToActivation } from "./iching.js";
+import { longitudeToActivation } from "./iching.js";
 
 // ─── HD Types & Enums ───────────────────────────────────────────
 
@@ -413,34 +421,41 @@ export function calculateProfile(personalitySunLine: number, designSunLine: numb
  * Calculate the "Design" datetime — when the Sun was exactly 88°
  * earlier in ecliptic longitude before birth.
  *
- * This is NOT 88 calendar days — it's 88° of solar motion (~88.5 days).
- * Uses iterative refinement (simplified binary search).
+ * CRITICAL: This uses 88 DEGREES of solar arc, NOT 88 days!
+ * Uses Swiss Ephemeris for arcsecond precision.
+ *
+ * @param birthDate - Birth date/time (UTC)
+ * @param utcOffsetHours - Timezone offset in hours (default 0 for UTC)
+ * @returns Design date/time
  */
-export function calculateDesignDate(birthDate: Date): Date {
-  const birthSunLong = approximateSunLongitude(birthDate);
-  const designLong = (((birthSunLong - 88) % 360) + 360) % 360;
+export function calculateDesignDate(birthDate: Date, utcOffsetHours = 0): Date {
+  // Convert birth date to Julian day
+  const birthJd = datetimeToJulian(
+    birthDate.getUTCFullYear(),
+    birthDate.getUTCMonth() + 1,
+    birthDate.getUTCDate(),
+    birthDate.getUTCHours(),
+    birthDate.getUTCMinutes(),
+    birthDate.getUTCSeconds(),
+    utcOffsetHours,
+  );
 
-  // Initial guess: ~88.5 days before birth
-  let dt = new Date(birthDate.getTime() - 88.5 * 86_400_000);
+  // Calculate design Julian day using Swiss Ephemeris
+  const designJd = calculateDesignJulianDay(birthJd);
 
-  // Binary search: refine until sun longitude matches within 0.1°
-  let step = 5 * 86_400_000; // 5-day steps
-  for (let i = 0; i < 30; i++) {
-    const currentLong = approximateSunLongitude(dt);
-    const diff = (((currentLong - designLong) % 360) + 360) % 360;
+  // Convert back to date
+  const designDt = julianToDatetime(designJd);
 
-    if (diff < 0.1 || diff > 359.9) break; // close enough
-
-    // If we overshot (past the target), go forward; otherwise go back
-    if (diff > 180) {
-      dt = new Date(dt.getTime() + step);
-    } else {
-      dt = new Date(dt.getTime() - step);
-    }
-    step = Math.max(step / 2, 3_600_000); // halve step, min 1 hour
-  }
-
-  return dt;
+  return new Date(
+    Date.UTC(
+      designDt.year,
+      designDt.month - 1,
+      designDt.day,
+      designDt.hour,
+      designDt.minute,
+      designDt.second,
+    ),
+  );
 }
 
 // ─── HD Chart ────────────────────────────────────────────────────
@@ -461,25 +476,35 @@ export interface HumanDesignChart {
 
 /**
  * Calculate a full Human Design chart from birth moment.
+ * Uses Swiss Ephemeris for arcsecond precision.
+ * Calculates all 13 planetary positions for both Personality and Design.
  */
 export function calculateChart(birth: BirthMoment): HumanDesignChart {
-  // Personality (conscious): birth time
-  const personalitySunLong = approximateSunLongitude(birth.datetime);
-  const personalityEarthLong = (personalitySunLong + 180) % 360;
+  // Get all 13 planetary positions for both Personality and Design
+  const positions = calculateFullChartPositions(
+    birth.datetime.getUTCFullYear(),
+    birth.datetime.getUTCMonth() + 1,
+    birth.datetime.getUTCDate(),
+    birth.datetime.getUTCHours(),
+    birth.datetime.getUTCMinutes(),
+    birth.datetime.getUTCSeconds(),
+    0, // UTC
+  );
 
-  // Design (unconscious): ~88° earlier
-  const designDate = calculateDesignDate(birth.datetime);
-  const designSunLong = approximateSunLongitude(designDate);
-  const designEarthLong = (designSunLong + 180) % 360;
+  // Extract all longitudes (13 personality + 13 design = 26 total)
+  const allLongitudes = [
+    ...positions.personality.map((p) => p.longitude),
+    ...positions.design.map((p) => p.longitude),
+  ];
 
-  // Get all 4 primary activations
-  const longitudes = [personalitySunLong, personalityEarthLong, designSunLong, designEarthLong];
+  // Get all gate activations
+  const activations = getActivationsFromLongitudes(allLongitudes);
 
-  const activations = getActivationsFromLongitudes(longitudes);
-  const personalitySun = activations[0]!;
-  const personalityEarth = activations[1]!;
-  const designSun = activations[2]!;
-  const designEarth = activations[3]!;
+  // Extract the 4 primary activations for the chart summary
+  const personalitySun = activations[0]!; // Personality Sun
+  const personalityEarth = activations[1]!; // Personality Earth
+  const designSun = activations[13]!; // Design Sun (offset by 13)
+  const designEarth = activations[14]!; // Design Earth (offset by 13)
 
   // Collect all active gates
   const activeGateSet = new Set(activations.map((a) => a.gate));
@@ -506,7 +531,7 @@ export function calculateChart(birth: BirthMoment): HumanDesignChart {
     personalityEarth,
     designSun,
     designEarth,
-    activeGates: [...activeGateSet].sort((a, b) => a - b),
+    activeGates: [...activeGateSet].toSorted((a, b) => a - b),
     definedCenters: [...definedCenters],
     undefinedCenters,
     definedChannels,
@@ -525,7 +550,9 @@ export class HumanDesignSystem implements CosmicSystem {
   private natalCache = new Map<string, HumanDesignChart>();
 
   async calculate(birth: BirthMoment | null, now?: Date): Promise<CosmicState | null> {
-    if (!birth) return null;
+    if (!birth) {
+      return null;
+    }
 
     const dt = now ?? new Date();
 
@@ -537,8 +564,8 @@ export class HumanDesignSystem implements CosmicSystem {
       this.natalCache.set(cacheKey, natal);
     }
 
-    // Current transit gate activations
-    const transitSunLong = approximateSunLongitude(dt);
+    // Current transit gate activations (using Swiss Ephemeris)
+    const transitSunLong = getSunLongitude(dt);
     const transitEarthLong = (transitSunLong + 180) % 360;
     const transitActivations = getActivationsFromLongitudes([transitSunLong, transitEarthLong]);
     const transitGates = transitActivations.map((a) => a.gate);

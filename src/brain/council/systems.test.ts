@@ -29,6 +29,8 @@ import {
   Suit,
   cardName,
 } from "./systems/cardology.js";
+// ─── Ephemeris ───────────────────────────────────────────────────
+import { getSunLongitude } from "./systems/ephemeris.js";
 // ─── Human Design ────────────────────────────────────────────────
 import {
   determineType,
@@ -47,7 +49,6 @@ import {
 // ─── I-Ching ─────────────────────────────────────────────────────
 import {
   longitudeToActivation,
-  approximateSunLongitude,
   getDailyCode,
   getGeneKey,
   GATE_CIRCLE,
@@ -356,19 +357,21 @@ describe("I-Ching / Gene Keys", () => {
     });
   });
 
-  describe("approximateSunLongitude", () => {
+  describe("getSunLongitude (Swiss Ephemeris)", () => {
     it("J2000.0 epoch returns ~280°", () => {
       const j2000 = new Date("2000-01-01T12:00:00Z");
-      const lon = approximateSunLongitude(j2000);
+      const lon = getSunLongitude(j2000);
       // Sun at J2000.0 is approximately 280.46° (the L0 constant)
-      expect(lon).toBeCloseTo(280.5, 0);
+      // Swiss Ephemeris should give us this precisely
+      expect(lon).toBeGreaterThanOrEqual(279);
+      expect(lon).toBeLessThanOrEqual(282);
     });
 
     it("increases by ~1°/day", () => {
       const d1 = new Date("2025-03-21T00:00:00Z");
       const d2 = new Date("2025-03-22T00:00:00Z");
-      const l1 = approximateSunLongitude(d1);
-      const l2 = approximateSunLongitude(d2);
+      const l1 = getSunLongitude(d1);
+      const l2 = getSunLongitude(d2);
       const diff = (((l2 - l1) % 360) + 360) % 360;
       expect(diff).toBeCloseTo(1.0, 0);
     });

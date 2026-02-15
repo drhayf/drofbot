@@ -9,7 +9,7 @@
  *  - 5.625° per gate, 0.9375° per line
  *  - Gate circle: 64 gates in the Rave Mandala sequence starting from Gate 41
  *  - Earth gate: Sun + 180° (opposing gate)
- *  - Approximate sun longitude: simplified VSOP87 (±1° accuracy)
+ *  - Sun longitude: Swiss Ephemeris (arcsecond precision)
  *  - Design date: Sun − 88° solar arc (not 88 calendar days)
  *
  * Every formula, constant, and threshold faithfully ported.
@@ -17,6 +17,7 @@
 
 import type { ArchetypeMapping, BirthMoment, CosmicState, CosmicSystem } from "../types.js";
 import { Element } from "../types.js";
+import { getSunLongitude } from "./ephemeris.js";
 
 // ─── Constants (from GUTTERS §3.1) ──────────────────────────────
 
@@ -103,33 +104,6 @@ export function longitudeToActivation(longitude: number): Activation {
   return { longitude, gate, line, color, tone, base };
 }
 
-// ─── Approximate Sun Longitude (§3.4) ────────────────────────────
-
-/**
- * Simplified solar longitude calculation (no ephemeris needed).
- * ±1° accuracy — sufficient for gate determination.
- *
- * Uses the simplified VSOP87 algorithm:
- *   days from J2000.0 (Jan 1, 2000 12:00 TT)
- *   mean longitude = (280.46 + 0.9856474 × days) % 360
- *   mean anomaly g = (357.528 + 0.9856003 × days) % 360
- *   equation of center C = 1.915 × sin(g) + 0.020 × sin(2g)
- *   sun longitude = (meanLong + C) % 360
- */
-export function approximateSunLongitude(dt: Date): number {
-  const j2000 = Date.UTC(2000, 0, 1, 12, 0, 0);
-  const days = (dt.getTime() - j2000) / 86400000;
-
-  const meanLong = (280.46 + 0.9856474 * days) % 360;
-
-  const g = (((357.528 + 0.9856003 * days) % 360) + 360) % 360;
-  const gRad = (g * Math.PI) / 180;
-
-  const C = 1.915 * Math.sin(gRad) + 0.02 * Math.sin(2 * gRad);
-
-  return (((meanLong + C) % 360) + 360) % 360;
-}
-
 // ─── Daily Code (§3.5) ──────────────────────────────────────────
 
 export interface DailyCode {
@@ -142,9 +116,10 @@ export interface DailyCode {
 /**
  * Calculate the daily I-Ching code.
  * Earth activation = Sun + 180° (opposing gate).
+ * Uses Swiss Ephemeris for arcsecond precision.
  */
 export function getDailyCode(dt: Date): DailyCode {
-  const sunLong = approximateSunLongitude(dt);
+  const sunLong = getSunLongitude(dt);
   const earthLong = (sunLong + 180) % 360;
 
   return {
@@ -790,7 +765,6 @@ export class IChingSystem implements CosmicSystem {
     const earthLine = daily.earthActivation.line;
 
     const geneKey = getGeneKey(sunGate);
-    const earthGK = getGeneKey(earthGate);
     const lineArchetype = LINE_ARCHETYPES[sunLine] ?? "Unknown";
 
     return {

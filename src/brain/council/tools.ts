@@ -34,12 +34,7 @@ import {
 } from "./systems/cardology.js";
 import { Planet } from "./systems/cardology.js";
 import { calculateChart, calculateDesignDate } from "./systems/human-design.js";
-import {
-  getDailyCode,
-  getGeneKey,
-  approximateSunLongitude,
-  longitudeToActivation,
-} from "./systems/iching.js";
+import { getDailyCode, getGeneKey } from "./systems/iching.js";
 import { calculateLunarPhase } from "./systems/lunar.js";
 import { SolarTrackingSystem } from "./systems/solar.js";
 import { calculateAllPlanetPositions, compareToNatal, findSkyAspects } from "./systems/transits.js";
