@@ -88,7 +88,8 @@ export const useIdentityStore = create<IdentityStoreState>((set, get) => ({
       ]);
 
       // Extract data with fallbacks
-      const profile = val(profileRes)?.profile as IdentityProfile | null;
+      // API returns profile directly, not wrapped in { profile: {...} }
+      const profile = val(profileRes) as IdentityProfile | null;
       const vault = val(synthesisRes) as VaultSynthesis | null;
       const voice = val(voiceRes) as VoiceProfile | null;
       const memory = val(memoryRes) as MemoryStats | null;
