@@ -102,6 +102,34 @@ const HandsSchema = z
   .strict()
   .optional();
 
+const BirthMomentConfigSchema = z
+  .object({
+    datetime: z.string(), // ISO 8601
+    latitude: z.number(),
+    longitude: z.number(),
+    timezone: z.string(), // IANA timezone
+  })
+  .strict();
+
+const CouncilSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    operatorBirth: BirthMomentConfigSchema.optional(),
+    agentBirth: BirthMomentConfigSchema.optional(),
+    enabledSystems: z.array(z.string()).optional(),
+    briefingSchedule: z
+      .object({
+        morning: z.string().optional(),
+        midday: z.string().optional(),
+        evening: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    primaryChannel: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
 export const OpenClawSchema = z
   .object({
     meta: z
@@ -524,6 +552,7 @@ export const OpenClawSchema = z
       .optional(),
     memory: MemorySchema,
     hands: HandsSchema,
+    council: CouncilSchema,
     skills: z
       .object({
         allowBundled: z.array(z.string()).optional(),

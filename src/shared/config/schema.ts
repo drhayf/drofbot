@@ -71,6 +71,7 @@ const GROUP_LABELS: Record<string, string> = {
   discovery: "Discovery",
   presence: "Presence",
   voicewake: "Voice Wake",
+  council: "Council",
 };
 
 const GROUP_ORDER: Record<string, number> = {
@@ -98,6 +99,7 @@ const GROUP_ORDER: Record<string, number> = {
   discovery: 210,
   presence: 220,
   voicewake: 230,
+  council: 240,
   logging: 900,
 };
 
@@ -394,6 +396,24 @@ const FIELD_LABELS: Record<string, string> = {
   "plugins.installs.*.installPath": "Plugin Install Path",
   "plugins.installs.*.version": "Plugin Install Version",
   "plugins.installs.*.installedAt": "Plugin Install Time",
+  council: "Council",
+  "council.enabled": "Council Enabled",
+  "council.operatorBirth": "Operator Birth Data",
+  "council.operatorBirth.datetime": "Birth Date/Time (ISO 8601)",
+  "council.operatorBirth.latitude": "Birth Latitude",
+  "council.operatorBirth.longitude": "Birth Longitude",
+  "council.operatorBirth.timezone": "Birth Timezone",
+  "council.agentBirth": "Agent Birth Data",
+  "council.agentBirth.datetime": "Agent Birth Date/Time (ISO 8601)",
+  "council.agentBirth.latitude": "Agent Birth Latitude",
+  "council.agentBirth.longitude": "Agent Birth Longitude",
+  "council.agentBirth.timezone": "Agent Birth Timezone",
+  "council.enabledSystems": "Enabled Council Systems",
+  "council.briefingSchedule": "Briefing Schedule",
+  "council.briefingSchedule.morning": "Morning Briefing (cron)",
+  "council.briefingSchedule.midday": "Midday Briefing (cron)",
+  "council.briefingSchedule.evening": "Evening Briefing (cron)",
+  "council.primaryChannel": "Primary Briefing Channel",
 };
 
 const FIELD_HELP: Record<string, string> = {
@@ -762,6 +782,25 @@ const FIELD_HELP: Record<string, string> = {
     "Optional PluralKit token for resolving private systems or members.",
   "channels.slack.dm.policy":
     'Direct message access control ("pairing" recommended). "open" requires channels.slack.dm.allowFrom=["*"].',
+  council: "Council system for natal chart calculations and briefings.",
+  "council.enabled": "Enable the Council system (default: true).",
+  "council.operatorBirth":
+    "Operator's birth data for natal chart calculations (Human Design, etc.).",
+  "council.operatorBirth.datetime":
+    "Birth date and time in ISO 8601 format (e.g., 1999-07-23T14:30:00).",
+  "council.operatorBirth.latitude":
+    "Birth latitude in decimal degrees (e.g., -33.8688 for Sydney).",
+  "council.operatorBirth.longitude":
+    "Birth longitude in decimal degrees (e.g., 151.2093 for Sydney).",
+  "council.operatorBirth.timezone": "IANA timezone for birth location (e.g., Australia/Sydney).",
+  "council.agentBirth": "Drofbot's birth data (default: fork creation timestamp).",
+  "council.enabledSystems": "Which Council systems to activate (default: all registered).",
+  "council.briefingSchedule": "Cron schedules for automated briefings.",
+  "council.briefingSchedule.morning":
+    "Morning briefing cron expression (e.g., '0 7 * * *' for 7 AM daily).",
+  "council.briefingSchedule.midday": "Midday briefing cron expression.",
+  "council.briefingSchedule.evening": "Evening briefing cron expression.",
+  "council.primaryChannel": "Channel to send briefings to (default: first configured channel).",
 };
 
 const FIELD_PLACEHOLDERS: Record<string, string> = {
