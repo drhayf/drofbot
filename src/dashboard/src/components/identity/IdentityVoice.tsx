@@ -1,7 +1,7 @@
-import { useEffect, useRef, useMemo } from "react";
 import * as d3 from "d3";
-import { Card, CardContent } from "../shared/Card";
+import { useEffect, useRef, useMemo } from "react";
 import type { VoiceProfile } from "../../types/identity";
+import { Card, CardContent } from "../shared/Card";
 
 interface IdentityVoiceProps {
   voice: VoiceProfile | null;
@@ -12,17 +12,45 @@ export function IdentityVoice({ voice }: IdentityVoiceProps) {
 
   // Memoize data processing to avoid regen on every render
   const data = useMemo(() => {
-    if (!voice?.profile?.analysis) return [];
-    
-    // Normalize keys to readable labels and values to 0-1 range if needed
-    // Assuming API returns normalized 0-1 values for these specific keys, 
-    // or we might need to normalize based on known ranges.
-    // For now, mapping known keys to labels.
-    const keys = Object.keys(voice.profile.analysis);
-    return keys.map(key => ({
-      axis: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()), // camelCase to Title Case
-      value: voice.profile!.analysis[key] || 0
-    }));
+    if (!voice?.profile) return [];
+
+    // API returns flat properties, not an 'analysis' object
+    // Build radar data from available numeric metrics
+    const profile = voice.profile as Record<string, unknown>;
+    const metrics: { axis: string; value: number }[] = [];
+
+    // formalityLevel is already 0-1
+    if (typeof profile.formalityLevel === "number") {
+      metrics.push({ axis: "Formality", value: profile.formalityLevel });
+    }
+
+    // avgSentenceLength - normalize to 0-1 (typical range 5-30)
+    if (typeof profile.avgSentenceLength === "number") {
+      metrics.push({ axis: "Sentence Length", value: Math.min(profile.avgSentenceLength / 30, 1) });
+    }
+
+    // conversationsAnalyzed - normalize to 0-1 (scale up to 100)
+    if (typeof profile.conversationsAnalyzed === "number") {
+      metrics.push({ axis: "Experience", value: Math.min(profile.conversationsAnalyzed / 100, 1) });
+    }
+
+    // vocabularyPreferences count - normalize to 0-1 (scale up to 50)
+    if (Array.isArray(profile.vocabularyPreferences)) {
+      metrics.push({
+        axis: "Vocabulary",
+        value: Math.min(profile.vocabularyPreferences.length / 50, 1),
+      });
+    }
+
+    // uniqueExpressions count - normalize to 0-1 (scale up to 20)
+    if (Array.isArray(profile.uniqueExpressions)) {
+      metrics.push({
+        axis: "Expressions",
+        value: Math.min(profile.uniqueExpressions.length / 20, 1),
+      });
+    }
+
+    return metrics;
   }, [voice]);
 
   useEffect(() => {
@@ -60,13 +88,10 @@ export function IdentityVoice({ voice }: IdentityVoiceProps) {
     }
 
     // Axis lines
-    const axes = g.selectAll(".axis")
-      .data(data)
-      .enter()
-      .append("g")
-      .attr("class", "axis");
+    const axes = g.selectAll(".axis").data(data).enter().append("g").attr("class", "axis");
 
-    axes.append("line")
+    axes
+      .append("line")
       .attr("x1", 0)
       .attr("y1", 0)
       .attr("x2", (_d, i) => rScale(1.1) * Math.cos(angleSlice * i - Math.PI / 2))
@@ -75,19 +100,21 @@ export function IdentityVoice({ voice }: IdentityVoiceProps) {
       .style("stroke-width", "1px");
 
     // Axis labels
-    axes.append("text")
+    axes
+      .append("text")
       .attr("class", "legend")
       .style("font-size", "10px")
       .attr("text-anchor", "middle")
       .attr("dy", "0.35em")
       .attr("x", (_d, i) => rScale(1.25) * Math.cos(angleSlice * i - Math.PI / 2))
       .attr("y", (_d, i) => rScale(1.25) * Math.sin(angleSlice * i - Math.PI / 2))
-      .text(d => d.axis)
+      .text((d) => d.axis)
       .style("fill", "var(--ink-2)");
 
     // The Radar Shape
-    const radarLine = d3.lineRadial<{ axis: string; value: number }>()
-      .radius(d => rScale(d.value))
+    const radarLine = d3
+      .lineRadial<{ axis: string; value: number }>()
+      .radius((d) => rScale(d.value))
       .angle((_d, i) => i * angleSlice)
       .curve(d3.curveLinearClosed);
 
@@ -109,7 +136,6 @@ export function IdentityVoice({ voice }: IdentityVoiceProps) {
       .attr("cy", (d, i) => rScale(d.value) * Math.sin(angleSlice * i - Math.PI / 2))
       .attr("r", 3)
       .style("fill", "var(--accent)");
-
   }, [data]);
 
   if (!voice?.profile) return null;
@@ -127,22 +153,36 @@ export function IdentityVoice({ voice }: IdentityVoiceProps) {
         <div className="space-y-4">
           <Card>
             <CardContent>
-              <h3 className="text-sm font-medium text-ink-2 mb-2 uppercase tracking-wider">Dominant Tone</h3>
-              <p className="text-lg text-ink-1 font-medium capitalize">{voice.profile.dominantTone}</p>
+              <h3 className="text-sm font-medium text-ink-2 mb-2 uppercase tracking-wider">
+                Dominant Tone
+              </h3>
+              {/* API returns toneDescription, not dominantTone */}
+              <p className="text-lg text-ink-1 font-medium">
+                {((voice.profile as Record<string, unknown>).toneDescription as string) ??
+                  "Not yet established"}
+              </p>
             </CardContent>
           </Card>
-          
+
           <Card>
-             <CardContent>
-               <h3 className="text-sm font-medium text-ink-2 mb-2 uppercase tracking-wider">Descriptors</h3>
-               <div className="flex flex-wrap gap-2">
-                 {voice.profile.descriptors.map(d => (
-                   <span key={d} className="px-2 py-1 bg-surface-raised rounded text-sm text-ink-1 border border-border-subtle">
-                     {d}
-                   </span>
-                 ))}
-               </div>
-             </CardContent>
+            <CardContent>
+              <h3 className="text-sm font-medium text-ink-2 mb-2 uppercase tracking-wider">
+                Descriptors
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {/* API returns uniqueExpressions, not descriptors */}
+                {(
+                  ((voice.profile as Record<string, unknown>).uniqueExpressions as string[]) ?? []
+                ).map((d) => (
+                  <span
+                    key={d}
+                    className="px-2 py-1 bg-surface-raised rounded text-sm text-ink-1 border border-border-subtle"
+                  >
+                    {d}
+                  </span>
+                ))}
+              </div>
+            </CardContent>
           </Card>
         </div>
       </div>
