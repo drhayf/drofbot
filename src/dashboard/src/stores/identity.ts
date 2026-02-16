@@ -1,4 +1,12 @@
 import { create } from "zustand";
+import type {
+  IdentityPageData,
+  IdentityProfile,
+  MemoryStats,
+  RelationshipData,
+  VaultSynthesis,
+  VoiceProfile,
+} from "../types";
 import {
   identityApi,
   intelligenceApi,
@@ -8,14 +16,6 @@ import {
   progressionApi,
   vaultApi,
 } from "../api/client";
-import type {
-  IdentityPageData,
-  IdentityProfile,
-  MemoryStats,
-  RelationshipData,
-  VaultSynthesis,
-  VoiceProfile,
-} from "../types";
 
 export interface EvolutionMilestone {
   id: string;
@@ -34,10 +34,7 @@ interface IdentityStoreState extends IdentityPageData {
 }
 
 // Helper to safely extract value from PromiseFulfilledResult
-const val = <T>(
-  res: PromiseSettledResult<T>,
-  fallback: T | null = null,
-): T | null => {
+const val = <T>(res: PromiseSettledResult<T>, fallback: T | null = null): T | null => {
   return res.status === "fulfilled" ? res.value : fallback;
 };
 
@@ -107,18 +104,23 @@ export const useIdentityStore = create<IdentityStoreState>((set, get) => ({
       // 1. Birth Data Set (15%)
       if (profile?.birthData) score += 15;
       // 2. Voice Profile (10%)
-      if (voice?.profile && voice.profile.descriptors.length > 0) score += 10;
+      // API returns uniqueExpressions, not descriptors
+      const voiceDescriptors = (voice?.profile as Record<string, unknown>)?.uniqueExpressions ?? [];
+      if (voice?.profile && Array.isArray(voiceDescriptors) && voiceDescriptors.length > 0)
+        score += 10;
       // 3. Memories (10%)
       const totalMemories =
-        (memory?.stats.episodic.count ?? 0) +
-        (memory?.stats.semantic.count ?? 0);
+        (memory?.stats.episodic.count ?? 0) + (memory?.stats.semantic.count ?? 0);
       if (totalMemories >= 10) score += 10;
       // 4. Hypotheses (10%)
       if (hypotheses.length > 0) score += 10;
       // 5. Cosmic Blueprint (15%) - HD or Cardology present
       if (profile?.humanDesign || profile?.cardology) score += 15;
       // 6. Vault Synthesis (15%)
-      if (vault?.synthesis && vault.synthesis.narrative.length > 50) score += 15;
+      // API returns 'rendered', not 'narrative'
+      const synthesisObj = vault?.synthesis as Record<string, unknown> | undefined;
+      const synthesisText = String(synthesisObj?.rendered ?? synthesisObj?.narrative ?? "");
+      if (vault?.synthesis && synthesisText.length > 50) score += 15;
       // 7. Patterns (10%)
       if (patterns.length > 0) score += 10;
       // 8. Progression (10%)
@@ -151,11 +153,11 @@ export const useIdentityStore = create<IdentityStoreState>((set, get) => ({
       // First Conversation (Approximated by earliest hypothesis or fixed start if not available)
       // Ideally we'd query the earliest message, but we'll use earliest memory/hypothesis as proxy
       if (hypotheses.length > 0) {
-        const earliestHypothesis = hypotheses.reduce((earliest, h) =>
-          new Date(h.createdAt) < new Date(earliest) ? h.createdAt : earliest,
-          hypotheses[0].createdAt
+        const earliestHypothesis = hypotheses.reduce(
+          (earliest, h) => (new Date(h.createdAt) < new Date(earliest) ? h.createdAt : earliest),
+          hypotheses[0].createdAt,
         );
-         milestones.push({
+        milestones.push({
           id: "first_hypothesis",
           label: "First Hypothesis Formed",
           timestamp: earliestHypothesis,
@@ -164,7 +166,7 @@ export const useIdentityStore = create<IdentityStoreState>((set, get) => ({
       }
 
       if (profile?.confirmedFacts && profile.confirmedFacts.length > 0) {
-         milestones.push({
+        milestones.push({
           id: "facts_learned",
           label: "First Facts Learned",
           timestamp: new Date().toISOString(), // We don't have timestamp for facts, just existence
@@ -174,14 +176,14 @@ export const useIdentityStore = create<IdentityStoreState>((set, get) => ({
 
       // 100 Memories
       if (totalMemories >= 100) {
-         milestones.push({
+        milestones.push({
           id: "100_memories",
           label: "100 Memories Stored",
           timestamp: new Date().toISOString(), // Proxy
           category: "memory",
         });
       } else {
-         milestones.push({
+        milestones.push({
           id: "100_memories",
           label: "100 Memories",
           timestamp: null,
@@ -191,7 +193,7 @@ export const useIdentityStore = create<IdentityStoreState>((set, get) => ({
 
       // Voice Profile
       if (voice?.profile) {
-         milestones.push({
+        milestones.push({
           id: "voice_profile",
           label: "Voice Profile Established",
           timestamp: voice.profile.lastUpdated ?? null,
