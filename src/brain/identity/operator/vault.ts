@@ -20,6 +20,7 @@ import type {
 } from "./types.js";
 import { createSubsystemLogger } from "../../../logging/subsystem.js";
 import { getSupabaseClient, isSupabaseConfigured } from "../../../shared/database/client.js";
+import { objectContainsCorruption } from "../../shared/llm-output-validator.js";
 import {
   DEFAULT_VOICE_PROFILE,
   DEFAULT_INTERACTION_PREFS,
@@ -40,10 +41,27 @@ function memKey(category: VaultCategory, key: string): string {
 
 /**
  * Upsert a vault entry (insert or update by category+key).
+ * Includes corruption detection to prevent storing garbage data.
  */
 export async function upsertVaultEntry(entry: VaultEntryCreate): Promise<VaultEntry> {
   const now = new Date().toISOString();
   const mk = memKey(entry.category, entry.key);
+
+  // Global safety net: check for corruption before storing
+  if (objectContainsCorruption(entry.content)) {
+    log.error(
+      `Blocked corrupted vault entry: ${entry.category}/${entry.key} - content contains source code patterns`,
+    );
+    // Return existing entry or a stub - don't store garbage
+    const existing = _inMemory.get(mk);
+    if (existing) return existing;
+    return {
+      id: crypto.randomUUID(),
+      ...entry,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
 
   // Build full entry with generated fields
   const existing = _inMemory.get(mk);
