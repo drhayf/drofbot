@@ -1,10 +1,4 @@
-import type {
-  CosmicSynthesis,
-  Hypothesis,
-  PatternSummary,
-  PlayerStats,
-  Quest,
-} from "./index";
+import type { CosmicSynthesis, Hypothesis, PatternSummary, PlayerStats, Quest } from "./index";
 
 export interface IdentityProfile {
   birthData: {
@@ -24,10 +18,17 @@ export interface IdentityProfile {
     definition: string;
   };
   cardology?: {
-    card: string;
+    birthCard: string;
+    birthCardSuit: string | null;
+    birthCardRank: number;
+    zodiacSign: string;
     planetaryRuler: string;
-    karmaCards: string[];
-    birthFlow: boolean;
+    currentPlanet: string;
+    currentCard: string;
+    periodDay: number;
+    periodProgress: number;
+    firstKarmaCard: string | null;
+    secondKarmaCard: string | null;
   };
   confirmedFacts: Array<{
     content: string;

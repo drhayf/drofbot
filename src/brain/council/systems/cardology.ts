@@ -730,6 +730,7 @@ export class CardologySystem implements CosmicSystem {
         birthCardSuit: birthCard.suit,
         birthCardRank: birthCard.rank,
         zodiacSign: zodiac,
+        planetaryRuler: ZODIAC_RULERS[zodiac],
         currentPlanet: currentPeriod.planet,
         currentCard: cardName(currentPeriod.directCard),
         periodDay: currentPeriod.periodDay,
