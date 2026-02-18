@@ -285,9 +285,9 @@ describe("transit_calculate", () => {
 // ─── Factory convenience ───────────────────────────────────────
 
 describe("createCosmicTools", () => {
-  it("returns 7 tools", () => {
+  it("returns 8 tools", () => {
     const tools = createCosmicTools();
-    expect(tools).toHaveLength(7);
+    expect(tools).toHaveLength(8);
     const names = tools.map((t) => t.name);
     expect(names).toContain("cardology_calculate");
     expect(names).toContain("iching_calculate");

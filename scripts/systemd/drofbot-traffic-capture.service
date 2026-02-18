@@ -1,0 +1,15 @@
+[Unit]
+Description=Drofbot DNS Traffic Capture
+After=network.target wg-quick@wg0.service
+Wants=wg-quick@wg0.service
+
+[Service]
+Type=simple
+ExecStart=/opt/drofbot/scripts/traffic-capture.sh
+Restart=always
+RestartSec=10
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

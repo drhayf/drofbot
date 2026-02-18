@@ -12,6 +12,8 @@
  * Budget: ~800-1200 tokens (dense, no fluff).
  */
 
+import { readFileSync, existsSync } from "fs";
+import path from "path";
 import type {
   BirthMoment,
   CosmicState,
@@ -19,10 +21,19 @@ import type {
   HarmonicSynthesis,
 } from "../council/types.js";
 import type { Hypothesis } from "../intelligence/hypothesis.js";
-import type { Pattern } from "../intelligence/observer.js";
 import { HypothesisStatus } from "../intelligence/hypothesis.js";
 
 // ─── Types ─────────────────────────────────────────────────────
+
+export interface TrafficContext {
+  generated_at: string;
+  window_minutes: number;
+  total_queries: number;
+  unique_domains: number;
+  active_categories: Record<string, string[]>;
+  top_domains: Array<{ domain: string; queries: number }>;
+  activity_summary: string;
+}
 
 export interface MasterSynthesis {
   /** Operator's metaphysical profile (natal chart summary, HD type, birth cards) */
@@ -35,6 +46,8 @@ export interface MasterSynthesis {
   harmony: string;
   /** Active quests and progression state */
   progression: string;
+  /** Operator's recent internet activity (from VPN traffic capture) */
+  operatorActivity: string;
   /** Pre-rendered full text for system prompt injection */
   rendered: string;
   /** When this synthesis was generated */
@@ -152,13 +165,17 @@ export class SynthesisEngine {
     // 5. Progression — served separately via /api/progression; not yet rendered in synthesis
     const progression = "";
 
-    // 6. Render full synthesis
+    // 6. Operator activity from VPN traffic capture
+    const operatorActivity = readTrafficContext();
+
+    // 7. Render full synthesis
     const rendered = assembleSynthesis({
       profile,
       cosmicWeather,
       intelligence,
       harmony,
       progression,
+      operatorActivity,
     });
 
     const synthesis: MasterSynthesis = {
@@ -167,6 +184,7 @@ export class SynthesisEngine {
       intelligence,
       harmony,
       progression,
+      operatorActivity,
       rendered,
       generatedAt: now,
     };
@@ -293,7 +311,9 @@ export class SynthesisEngine {
  * Dense format: one line per system.
  */
 function renderCosmicWeather(states: Map<string, CosmicState>): string {
-  if (states.size === 0) return "No cosmic data available.";
+  if (states.size === 0) {
+    return "No cosmic data available.";
+  }
 
   const lines: string[] = [];
   for (const [_name, state] of states) {
@@ -400,6 +420,48 @@ function renderRelationship(
 }
 
 /**
+ * Read traffic context from the VPN traffic capture system.
+ * Returns a formatted string for synthesis injection.
+ */
+function readTrafficContext(): string {
+  try {
+    // Try multiple possible locations for the traffic context file
+    const possiblePaths = [
+      "/opt/drofbot/.drofbot/traffic/traffic-context.json",
+      path.join(process.env.HOME || "/root", ".drofbot/traffic/traffic-context.json"),
+    ];
+
+    for (const trafficFile of possiblePaths) {
+      if (existsSync(trafficFile)) {
+        const raw = readFileSync(trafficFile, "utf-8");
+        const data = JSON.parse(raw) as TrafficContext;
+
+        if (
+          data.activity_summary &&
+          data.activity_summary !== "No significant user activity detected in this window"
+        ) {
+          const parts = [data.activity_summary];
+
+          if (data.top_domains && data.top_domains.length > 0) {
+            const topSites = data.top_domains
+              .slice(0, 5)
+              .map((d) => d.domain)
+              .join(", ");
+            parts.push(`Recent sites: ${topSites}`);
+          }
+
+          return parts.join(". ");
+        }
+      }
+    }
+  } catch {
+    // Silently ignore errors - traffic context is optional
+  }
+
+  return ""; // No traffic data available
+}
+
+/**
  * Assemble all sections into the final rendered synthesis.
  * Enforces the token budget by truncating sections as needed.
  */
@@ -409,6 +471,7 @@ function assembleSynthesis(sections: {
   intelligence: string;
   harmony: string;
   progression: string;
+  operatorActivity: string;
 }): string {
   const parts: string[] = ["## Master Synthesis"];
 
@@ -432,6 +495,11 @@ function assembleSynthesis(sections: {
     parts.push(truncate(sections.intelligence, MAX_SECTION_CHARS));
   }
 
+  if (sections.operatorActivity) {
+    parts.push("### Operator Activity");
+    parts.push(truncate(sections.operatorActivity, MAX_SECTION_CHARS));
+  }
+
   if (sections.progression) {
     parts.push("### Progression");
     parts.push(truncate(sections.progression, MAX_SECTION_CHARS));
@@ -445,7 +513,9 @@ function assembleSynthesis(sections: {
  * Truncate a string to a maximum length, appending "…" if truncated.
  */
 export function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
+  if (text.length <= maxLen) {
+    return text;
+  }
   return text.slice(0, maxLen - 1) + "…";
 }
 

@@ -520,5 +520,66 @@ export function createCosmicTools(): AnyAgentTool[] {
     createLunarCalculateTool(),
     createTransitCalculateTool(),
     createCosmicSynthesisTool(),
+    createTrafficContextTool(),
   ];
+}
+
+// ─── Traffic Context Tool ──────────────────────────────────────
+
+import { existsSync, readFileSync } from "fs";
+import path from "path";
+import type { TrafficContext } from "../synthesis/master.js";
+
+const TrafficContextSchema = Type.Object({});
+
+/**
+ * Create a tool that returns the operator's recent internet activity.
+ * Reads from the VPN traffic capture system.
+ */
+export function createTrafficContextTool(): AnyAgentTool {
+  return {
+    label: "Operator Activity",
+    name: "operator_activity",
+    description:
+      "Get a summary of the operator's recent internet activity. " +
+      "Shows what sites they've been visiting, what they're working on, " +
+      "and their current activity patterns. Use when asked 'what have I been doing' " +
+      "or to understand the operator's current context.",
+    parameters: TrafficContextSchema,
+    execute: async () => {
+      try {
+        // Try multiple possible locations for the traffic context file
+        const possiblePaths = [
+          "/opt/drofbot/.drofbot/traffic/traffic-context.json",
+          path.join(process.env.HOME || "/root", ".drofbot/traffic/traffic-context.json"),
+        ];
+
+        for (const trafficFile of possiblePaths) {
+          if (existsSync(trafficFile)) {
+            const raw = readFileSync(trafficFile, "utf-8");
+            const data = JSON.parse(raw) as TrafficContext;
+            return jsonResult({
+              activitySummary: data.activity_summary,
+              windowMinutes: data.window_minutes,
+              totalQueries: data.total_queries,
+              uniqueDomains: data.unique_domains,
+              activeCategories: data.active_categories,
+              topDomains: data.top_domains?.slice(0, 10) ?? [],
+              generatedAt: data.generated_at,
+            });
+          }
+        }
+
+        return jsonResult({
+          error: "No traffic data available",
+          hint: "The traffic capture service may not be running or no activity has been recorded yet.",
+        });
+      } catch (err) {
+        return jsonResult({
+          error: "Failed to read traffic context",
+          details: String(err),
+        });
+      }
+    },
+  };
 }
