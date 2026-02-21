@@ -220,6 +220,15 @@ export class OpenClawApp extends LitElement {
   @state() agentSkillsReport: SkillStatusReport | null = null;
   @state() agentSkillsAgentId: string | null = null;
 
+  // Models catalog state
+  @state() modelsLoading = false;
+  @state() modelsError: string | null = null;
+  @state() modelsCatalog: import("./controllers/models.js").ModelCatalogEntry[] = [];
+  @state() modelsByProvider: import("./controllers/models.js").ModelsByProvider = new Map();
+  @state() modelsLastFetch: number | null = null;
+  @state() modelsSearchQuery = "";
+  @state() modelsExpandedProvider: string | null = null;
+
   @state() sessionsLoading = false;
   @state() sessionsResult: SessionsListResult | null = null;
   @state() sessionsError: string | null = null;
@@ -563,6 +572,60 @@ export class OpenClawApp extends LitElement {
     const newRatio = Math.max(0.4, Math.min(0.7, ratio));
     this.splitRatio = newRatio;
     this.applySettings({ ...this.settings, splitRatio: newRatio });
+  }
+
+  async handleLoadModels() {
+    if (!this.client) {
+      this.modelsError = "Not connected to gateway";
+      return;
+    }
+    if (this.modelsLoading) {
+      return;
+    }
+    // Skip if recently fetched (within 30 seconds)
+    const now = Date.now();
+    if (
+      this.modelsLastFetch &&
+      now - this.modelsLastFetch < 30000 &&
+      this.modelsCatalog.length > 0
+    ) {
+      return;
+    }
+    this.modelsLoading = true;
+    this.modelsError = null;
+    try {
+      const result = await this.client.request<{
+        models: import("./controllers/models.js").ModelCatalogEntry[];
+      }>("models.list", {});
+      const models = result?.models ?? [];
+      this.modelsCatalog = models;
+      // Group by provider
+      const grouped = new Map<string, import("./controllers/models.js").ModelCatalogEntry[]>();
+      for (const model of models) {
+        const provider = model.provider || "unknown";
+        const existing = grouped.get(provider) ?? [];
+        existing.push(model);
+        grouped.set(provider, existing);
+      }
+      // Sort each provider's models by name
+      for (const entries of grouped.values()) {
+        entries.sort((a, b) => a.name.localeCompare(b.name));
+      }
+      this.modelsByProvider = grouped;
+      this.modelsLastFetch = now;
+    } catch (err) {
+      this.modelsError = String(err);
+    } finally {
+      this.modelsLoading = false;
+    }
+  }
+
+  handleModelsSearchChange(query: string) {
+    this.modelsSearchQuery = query;
+  }
+
+  handleModelsToggleProvider(provider: string | null) {
+    this.modelsExpandedProvider = provider;
   }
 
   render() {

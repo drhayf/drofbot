@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import type { ModelCatalogEntry, ModelsByProvider } from "../controllers/models.js";
 import type {
   AgentFileEntry,
   AgentsFilesListResult,
@@ -16,6 +17,11 @@ import {
   normalizeToolName,
   resolveToolProfilePolicy,
 } from "../../../../src/brain/agent-runner/tool-policy.js";
+import {
+  PROVIDER_DISPLAY,
+  formatContextWindow,
+  getModelCapabilities,
+} from "../controllers/models.js";
 import { formatAgo } from "../format.ts";
 import {
   formatCronPayload,
@@ -59,6 +65,13 @@ export type AgentsProps = {
   agentSkillsError: string | null;
   agentSkillsAgentId: string | null;
   skillsFilter: string;
+  // Model catalog state
+  modelsLoading: boolean;
+  modelsError: string | null;
+  modelsCatalog: ModelCatalogEntry[];
+  modelsByProvider: ModelsByProvider;
+  modelsSearchQuery: string;
+  modelsExpandedProvider: string | null;
   onRefresh: () => void;
   onSelectAgent: (agentId: string) => void;
   onSelectPanel: (panel: AgentsPanel) => void;
@@ -80,6 +93,9 @@ export type AgentsProps = {
   onAgentSkillToggle: (agentId: string, skillName: string, enabled: boolean) => void;
   onAgentSkillsClear: (agentId: string) => void;
   onAgentSkillsDisableAll: (agentId: string) => void;
+  onLoadModels: () => void;
+  onModelsSearchChange: (query: string) => void;
+  onModelsToggleProvider: (provider: string | null) => void;
 };
 
 const TOOL_SECTIONS = [
@@ -406,51 +422,6 @@ function parseFallbackList(value: string): string[] {
     .filter(Boolean);
 }
 
-type ConfiguredModelOption = {
-  value: string;
-  label: string;
-};
-
-function resolveConfiguredModels(
-  configForm: Record<string, unknown> | null,
-): ConfiguredModelOption[] {
-  const cfg = configForm as ConfigSnapshot | null;
-  const models = cfg?.agents?.defaults?.models;
-  if (!models || typeof models !== "object") {
-    return [];
-  }
-  const options: ConfiguredModelOption[] = [];
-  for (const [modelId, modelRaw] of Object.entries(models)) {
-    const trimmed = modelId.trim();
-    if (!trimmed) {
-      continue;
-    }
-    const alias =
-      modelRaw && typeof modelRaw === "object" && "alias" in modelRaw
-        ? typeof (modelRaw as { alias?: unknown }).alias === "string"
-          ? (modelRaw as { alias?: string }).alias?.trim()
-          : undefined
-        : undefined;
-    const label = alias && alias !== trimmed ? `${alias} (${trimmed})` : trimmed;
-    options.push({ value: trimmed, label });
-  }
-  return options;
-}
-
-function buildModelOptions(configForm: Record<string, unknown> | null, current?: string | null) {
-  const options = resolveConfiguredModels(configForm);
-  const hasCurrent = current ? options.some((option) => option.value === current) : false;
-  if (current && !hasCurrent) {
-    options.unshift({ value: current, label: `Current (${current})` });
-  }
-  if (options.length === 0) {
-    return html`
-      <option value="" disabled>No configured models</option>
-    `;
-  }
-  return options.map((option) => html`<option value=${option.value}>${option.label}</option>`);
-}
-
 type CompiledPattern =
   | { kind: "all" }
   | { kind: "exact"; value: string }
@@ -617,10 +588,19 @@ export function renderAgents(props: AgentsProps) {
                       configLoading: props.configLoading,
                       configSaving: props.configSaving,
                       configDirty: props.configDirty,
+                      modelsLoading: props.modelsLoading,
+                      modelsError: props.modelsError,
+                      modelsCatalog: props.modelsCatalog,
+                      modelsByProvider: props.modelsByProvider,
+                      modelsSearchQuery: props.modelsSearchQuery,
+                      modelsExpandedProvider: props.modelsExpandedProvider,
                       onConfigReload: props.onConfigReload,
                       onConfigSave: props.onConfigSave,
                       onModelChange: props.onModelChange,
                       onModelFallbacksChange: props.onModelFallbacksChange,
+                      onLoadModels: props.onLoadModels,
+                      onModelsSearchChange: props.onModelsSearchChange,
+                      onModelsToggleProvider: props.onModelsToggleProvider,
                     })
                   : nothing
               }
@@ -785,10 +765,20 @@ function renderAgentOverview(params: {
   configLoading: boolean;
   configSaving: boolean;
   configDirty: boolean;
+  // Model catalog
+  modelsLoading: boolean;
+  modelsError: string | null;
+  modelsCatalog: ModelCatalogEntry[];
+  modelsByProvider: ModelsByProvider;
+  modelsSearchQuery: string;
+  modelsExpandedProvider: string | null;
   onConfigReload: () => void;
   onConfigSave: () => void;
   onModelChange: (agentId: string, modelId: string | null) => void;
   onModelFallbacksChange: (agentId: string, fallbacks: string[]) => void;
+  onLoadModels: () => void;
+  onModelsSearchChange: (query: string) => void;
+  onModelsToggleProvider: (provider: string | null) => void;
 }) {
   const {
     agent,
@@ -800,10 +790,19 @@ function renderAgentOverview(params: {
     configLoading,
     configSaving,
     configDirty,
+    modelsLoading,
+    modelsError,
+    modelsCatalog,
+    modelsByProvider,
+    modelsSearchQuery,
+    modelsExpandedProvider,
     onConfigReload,
     onConfigSave,
     onModelChange,
     onModelFallbacksChange,
+    onLoadModels,
+    onModelsSearchChange,
+    onModelsToggleProvider,
   } = params;
   const config = resolveAgentConfig(configForm, agent.id);
   const workspaceFromFiles =
@@ -839,6 +838,19 @@ function renderAgentOverview(params: {
       : "";
   const isDefault = Boolean(params.defaultId && agent.id === params.defaultId);
 
+  // Filter models by search query
+  const filteredByProvider = new Map<string, ModelCatalogEntry[]>();
+  for (const [provider, models] of modelsByProvider) {
+    const filtered = models.filter((m) =>
+      modelsSearchQuery
+        ? `${m.id} ${m.name} ${m.provider}`.toLowerCase().includes(modelsSearchQuery.toLowerCase())
+        : true,
+    );
+    if (filtered.length > 0) {
+      filteredByProvider.set(provider, filtered);
+    }
+  }
+
   return html`
     <section class="card">
       <div class="card-title">Overview</div>
@@ -872,45 +884,125 @@ function renderAgentOverview(params: {
       </div>
 
       <div class="agent-model-select" style="margin-top: 20px;">
-        <div class="label">Model Selection</div>
-        <div class="row" style="gap: 12px; flex-wrap: wrap;">
-          <label class="field" style="min-width: 260px; flex: 1;">
-            <span>Primary model${isDefault ? " (default)" : ""}</span>
-            <select
-              .value=${effectivePrimary ?? ""}
-              ?disabled=${!configForm || configLoading || configSaving}
-              @change=${(e: Event) =>
-                onModelChange(agent.id, (e.target as HTMLSelectElement).value || null)}
-            >
-              ${
-                isDefault
-                  ? nothing
-                  : html`
-                      <option value="">
-                        ${
-                          defaultPrimary ? `Inherit default (${defaultPrimary})` : "Inherit default"
-                        }
-                      </option>
-                    `
-              }
-              ${buildModelOptions(configForm, effectivePrimary ?? undefined)}
-            </select>
-          </label>
-          <label class="field" style="min-width: 260px; flex: 1;">
-            <span>Fallbacks (comma-separated)</span>
-            <input
-              .value=${fallbackText}
-              ?disabled=${!configForm || configLoading || configSaving}
-              placeholder="provider/model, provider/model"
-              @input=${(e: Event) =>
-                onModelFallbacksChange(
-                  agent.id,
-                  parseFallbackList((e.target as HTMLInputElement).value),
-                )}
-            />
-          </label>
+        <div class="row" style="justify-content: space-between; align-items: center;">
+          <div class="label">Model Selection</div>
+          <button
+            class="btn btn--sm"
+            ?disabled=${modelsLoading}
+            @click=${onLoadModels}
+          >
+            ${modelsLoading ? "Loading…" : modelsCatalog.length > 0 ? "Refresh Models" : "Load Models"}
+          </button>
         </div>
-        <div class="row" style="justify-content: flex-end; gap: 8px;">
+        
+        ${modelsError ? html`<div class="callout danger" style="margin-top: 8px;">${modelsError}</div>` : nothing}
+        
+        ${
+          modelsCatalog.length > 0
+            ? html`
+                <div class="model-selector" style="margin-top: 12px;">
+                  <!-- Search input -->
+                  <label class="field" style="margin-bottom: 12px;">
+                    <span>Search models</span>
+                    <input
+                      type="search"
+                      .value=${modelsSearchQuery}
+                      placeholder="Search by name, provider, or model ID..."
+                      @input=${(e: Event) => onModelsSearchChange((e.target as HTMLInputElement).value)}
+                    />
+                  </label>
+                  
+                   <!-- Provider-grouped model list -->
+                   <div class="model-providers">
+                     ${Array.from(filteredByProvider.entries()).map(([provider, models]) => {
+                       const display = PROVIDER_DISPLAY[provider] ?? {
+                         label: provider,
+                         order: 999,
+                       };
+                       const isExpanded = modelsExpandedProvider === provider;
+                       return html`
+                         <div class="model-provider-group">
+                           <button
+                             type="button"
+                             class="model-provider-header"
+                             @click=${() => onModelsToggleProvider(isExpanded ? null : provider)}
+                           >
+                             <span class="model-provider-name">${display.label}</span>
+                            <span class="model-provider-count">${models.length}</span>
+                            <span class="model-provider-chevron">${isExpanded ? "▼" : "▶"}</span>
+                          </button>
+                          ${
+                            isExpanded
+                              ? html`
+                                  <div class="model-provider-models">
+                                    ${models.map((m) => {
+                                      const caps = getModelCapabilities(m);
+                                      const ctxWin = formatContextWindow(m.contextWindow);
+                                      const isSelected = m.id === effectivePrimary;
+                                      return html`
+                                        <button
+                                          type="button"
+                                          class="model-option ${isSelected ? "selected" : ""}"
+                                          ?disabled=${!configForm || configLoading || configSaving}
+                                          @click=${() => onModelChange(agent.id, m.id)}
+                                        >
+                                          <div class="model-option-main">
+                                            <div class="model-option-name">${m.name}</div>
+                                            <div class="model-option-id mono">${m.id}</div>
+                                          </div>
+                                          <div class="model-option-meta">
+                                            ${ctxWin ? html`<span class="model-badge">${ctxWin}</span>` : nothing}
+                                            ${
+                                              caps.includes("vision")
+                                                ? html`
+                                                    <span class="model-badge vision">vision</span>
+                                                  `
+                                                : nothing
+                                            }
+                                            ${
+                                              caps.includes("reasoning")
+                                                ? html`
+                                                    <span class="model-badge reasoning">reasoning</span>
+                                                  `
+                                                : nothing
+                                            }
+                                          </div>
+                                        </button>
+                                      `;
+                                    })}
+                                  </div>
+                                `
+                              : nothing
+                          }
+                        </div>
+                      `;
+                     })}
+                  </div>
+                </div>
+              `
+            : html`
+                <div class="callout info" style="margin-top: 12px">
+                  Click "Load Models" to fetch available models from the gateway.
+                </div>
+              `
+        }
+        
+        <!-- Fallback input -->
+        <label class="field" style="min-width: 260px; flex: 1; margin-top: 16px;">
+          <span>Fallbacks (comma-separated)</span>
+          <input
+            .value=${fallbackText}
+            ?disabled=${!configForm || configLoading || configSaving}
+            placeholder="provider/model, provider/model"
+            @input=${(e: Event) =>
+              onModelFallbacksChange(
+                agent.id,
+                parseFallbackList((e.target as HTMLInputElement).value),
+              )}
+          />
+        </label>
+        
+        <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 12px;">
           <button
             class="btn btn--sm"
             ?disabled=${configLoading}

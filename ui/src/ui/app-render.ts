@@ -641,6 +641,12 @@ export function renderApp(state: AppViewState) {
                 agentSkillsError: state.agentSkillsError,
                 agentSkillsAgentId: state.agentSkillsAgentId,
                 skillsFilter: state.skillsFilter,
+                modelsLoading: state.modelsLoading,
+                modelsError: state.modelsError,
+                modelsCatalog: state.modelsCatalog,
+                modelsByProvider: state.modelsByProvider,
+                modelsSearchQuery: state.modelsSearchQuery,
+                modelsExpandedProvider: state.modelsExpandedProvider,
                 onRefresh: async () => {
                   await loadAgents(state);
                   const agentIds = state.agentsList?.agents?.map((entry) => entry.id) ?? [];
@@ -948,6 +954,9 @@ export function renderApp(state: AppViewState) {
                     : { fallbacks: normalized };
                   updateConfigFormValue(state, basePath, next);
                 },
+                onLoadModels: () => state.handleLoadModels(),
+                onModelsSearchChange: (query) => state.handleModelsSearchChange(query),
+                onModelsToggleProvider: (provider) => state.handleModelsToggleProvider(provider),
               })
             : nothing
         }
