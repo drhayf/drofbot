@@ -80,3 +80,19 @@ src/dashboard/.env
 !.agent/workflows/
 /local/
 deployment/deploy-vps.sh
+
+# VPS runtime directories (NEVER COMMIT)
+.drofbot/
+.openclaw/
+.claude/
+.cache/
+.config/
+.npm/
+.pki/
+snap/
+.sudo_as_admin_successful
+
+# VPS build artifacts
+dashboard-dist/
+*.mjs
+!src/**/*.mjs
