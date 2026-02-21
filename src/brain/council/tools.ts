@@ -542,7 +542,7 @@ export function createTrafficContextTool(): AnyAgentTool {
     name: "operator_activity",
     description:
       "Get a summary of the operator's recent internet activity. " +
-      "Shows what sites they've been visiting, what they're working on, " +
+      "Shows what services they've been connecting to, activity categories, " +
       "and their current activity patterns. Use when asked 'what have I been doing' " +
       "or to understand the operator's current context.",
     parameters: TrafficContextSchema,
@@ -560,11 +560,10 @@ export function createTrafficContextTool(): AnyAgentTool {
             const data = JSON.parse(raw) as TrafficContext;
             return jsonResult({
               activitySummary: data.activity_summary,
-              windowMinutes: data.window_minutes,
-              totalQueries: data.total_queries,
-              uniqueDomains: data.unique_domains,
-              activeCategories: data.active_categories,
-              topDomains: data.top_domains?.slice(0, 10) ?? [],
+              totalPackets: data.total_packets,
+              totalBytes: data.total_bytes,
+              uniqueDestinations: data.unique_destinations,
+              connections: data.connections?.slice(0, 10) ?? [],
               generatedAt: data.generated_at,
             });
           }

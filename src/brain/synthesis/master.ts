@@ -27,11 +27,17 @@ import { HypothesisStatus } from "../intelligence/hypothesis.js";
 
 export interface TrafficContext {
   generated_at: string;
-  window_minutes: number;
-  total_queries: number;
-  unique_domains: number;
-  active_categories: Record<string, string[]>;
-  top_domains: Array<{ domain: string; queries: number }>;
+  total_packets: number;
+  total_bytes: number;
+  unique_destinations: number;
+  connections: Array<{
+    ip: string;
+    service: string;
+    category: string;
+    packets: number;
+    bytes: number;
+    ports: number[];
+  }>;
   activity_summary: string;
 }
 
@@ -438,16 +444,22 @@ function readTrafficContext(): string {
 
         if (
           data.activity_summary &&
-          data.activity_summary !== "No significant user activity detected in this window"
+          data.activity_summary !== "No traffic captured" &&
+          data.activity_summary !== "Minimal activity"
         ) {
           const parts = [data.activity_summary];
 
-          if (data.top_domains && data.top_domains.length > 0) {
-            const topSites = data.top_domains
+          // Show top services from connections
+          if (data.connections && data.connections.length > 0) {
+            const topServices = data.connections
               .slice(0, 5)
-              .map((d) => d.domain)
-              .join(", ");
-            parts.push(`Recent sites: ${topSites}`);
+              .filter((c) => c.service !== "Unknown")
+              .map((c) => c.service)
+              .filter((s, i, arr) => arr.indexOf(s) === i); // unique
+
+            if (topServices.length > 0) {
+              parts.push(`Services: ${topServices.join(", ")}`);
+            }
           }
 
           return parts.join(". ");

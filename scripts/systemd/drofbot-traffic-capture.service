@@ -1,15 +1,13 @@
 [Unit]
-Description=Drofbot DNS Traffic Capture
+Description=Drofbot VPN Traffic Capture
 After=network.target wg-quick@wg0.service
-Wants=wg-quick@wg0.service
+Wants=drofbot-traffic-capture.timer
 
 [Service]
-Type=simple
-ExecStart=/opt/drofbot/scripts/traffic-capture.sh
-Restart=always
-RestartSec=10
-StandardOutput=null
-StandardError=journal
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/drofbot/scripts/traffic-capture.py
+WorkingDirectory=/opt/drofbot
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 [Install]
 WantedBy=multi-user.target

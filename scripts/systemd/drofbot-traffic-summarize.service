@@ -1,9 +1,0 @@
-[Unit]
-Description=Drofbot Traffic Summarizer
-
-[Service]
-Type=oneshot
-ExecStart=/opt/drofbot/scripts/traffic-summarize.sh
-Environment=LOG_FILE=/opt/drofbot/.drofbot/traffic/dns-queries.log
-Environment=OUTPUT_FILE=/opt/drofbot/.drofbot/traffic/traffic-context.json
-Environment=MINUTES=15
