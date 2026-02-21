@@ -307,12 +307,11 @@ export function createBriefingJobDefs(tz = "UTC", channel: string = "last"): Cro
       ...base,
       name: "briefing-morning",
       description: "Morning cosmic briefing with quests and progression.",
-      schedule: { kind: "cron", expr: "0 8 * * *", tz },
+      schedule: { kind: "cron", expr: "0 20 * * *", tz }, // 20:00 UTC = 07:00 AEDT
       payload: {
         kind: "agentTurn",
         message:
-          "Generate the morning briefing. Include full cosmic weather, today's quests, " +
-          "progression stats, and any Observer insights. Use generateMorningBriefing format.",
+          "Generate the morning briefing. Synthesize the current cosmic weather (use solar_weather, cosmic_current), the operator's progression/quests, and observer insights into a personalized morning prose. Do not use generic templates. Speak directly to the operator using their profile (use operator_profile).",
         deliver: true,
       },
     },
@@ -320,12 +319,11 @@ export function createBriefingJobDefs(tz = "UTC", channel: string = "last"): Cro
       ...base,
       name: "briefing-midday",
       description: "Midday check-in with quest progress.",
-      schedule: { kind: "cron", expr: "0 13 * * *", tz },
+      schedule: { kind: "cron", expr: "30 1 * * *", tz }, // 01:30 UTC = 12:30 AEDT
       payload: {
         kind: "agentTurn",
         message:
-          "Generate the midday check-in. Focus on quest progress, solar update, " +
-          "and any adjustments needed. Use generateMiddayCheckin format.",
+          "Generate the midday check-in. Briefly synthesize any solar shifts or notable current cosmic state changes. Speak to the operator's current active quests and offer encouragement or adjustments. Be concise and personal.",
         deliver: true,
       },
     },
@@ -333,12 +331,11 @@ export function createBriefingJobDefs(tz = "UTC", channel: string = "last"): Cro
       ...base,
       name: "briefing-evening",
       description: "Evening reflection with day summary.",
-      schedule: { kind: "cron", expr: "0 21 * * *", tz },
+      schedule: { kind: "cron", expr: "0 10 * * *", tz }, // 10:00 UTC = 21:00 AEDT
       payload: {
         kind: "agentTurn",
         message:
-          "Generate the evening reflection. Summarize completed quests, XP earned, " +
-          "streak status, and preview tomorrow. Use generateEveningReflection format.",
+          "Generate the evening reflection. Reflect on the operator's completed quests today, their current progression/streak, and any insights to carry into tomorrow. Synthesize this natively using the available tools, rather than resorting to a pre-formatted template.",
         deliver: true,
       },
     },

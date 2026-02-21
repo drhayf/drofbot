@@ -12,6 +12,7 @@ import { enqueueSystemEvent } from "../infra/system-events.js";
 import { getChildLogger } from "../logging.js";
 import { normalizeAgentId } from "../shared/routing/session-key.js";
 import { defaultRuntime } from "../runtime.js";
+import { createBriefingJobDefs } from "../brain/cron/briefing-runner.js";
 
 export type GatewayCronState = {
   cron: CronService;
@@ -103,4 +104,79 @@ export function buildGatewayCronService(params: {
   });
 
   return { cron, storePath, cronEnabled };
+}
+
+export async function seedCronJobsIfEmpty(cron: CronService) {
+  const logger = getChildLogger({ module: "cron", meta: { task: "seed" } });
+  try {
+    const existing = await cron.list({ includeDisabled: true });
+    if (existing.length > 0) {
+      logger.debug(`Found ${existing.length} existing cron jobs in store. Skipping auto-seed.`);
+      return; // Already seeded
+    }
+
+    logger.info("Initializing empty cron store with default Intelligence loops...");
+    const tz = "UTC";
+
+    // 1. Briefings (Morning, Midday, Evening)
+    const briefings = createBriefingJobDefs(tz);
+    for (const b of briefings) {
+      await cron.add(b);
+    }
+
+    // 2. Synthesis Runner (Every 8 hours)
+    await cron.add({
+      name: "synthesis-runner",
+      enabled: true,
+      description: "Generates the Master Synthesis and Operator Profile every 8 hours.",
+      schedule: { kind: "cron", expr: "0 */8 * * *", tz },
+      sessionTarget: "isolated",
+      wakeMode: "now",
+      delivery: { mode: "none" },
+      payload: {
+        kind: "agentTurn",
+        message:
+          "Run a full synthesis cycle. Synthesize the Master Synthesis context along with the operator profile, so it's fresh for the next session.",
+        deliver: false,
+      },
+    });
+
+    // 3. Expression Evaluator (Every 45 minutes)
+    await cron.add({
+      name: "expression-evaluator",
+      enabled: true,
+      description: "Evaluates triggers for spontaneous expression every 45 minutes.",
+      schedule: { kind: "cron", expr: "*/45 * * * *", tz },
+      sessionTarget: "isolated",
+      wakeMode: "now",
+      delivery: { mode: "announce" },
+      payload: {
+        kind: "agentTurn",
+        message:
+          "Check the expression engine. If there is a highly significant convergence of cosmic data, hypotheses, or patterns across Council systems, compose a spontaneous message to the operator. If nothing meets the threshold, output nothing.",
+        deliver: true,
+      },
+    });
+
+    // 4. Observer Cycle (Every 6 hours)
+    await cron.add({
+      name: "observer-cycle",
+      enabled: true,
+      description: "Runs the cyclical pattern Observer every 6 hours.",
+      schedule: { kind: "cron", expr: "0 */6 * * *", tz },
+      sessionTarget: "isolated",
+      wakeMode: "now",
+      delivery: { mode: "none" },
+      payload: {
+        kind: "agentTurn",
+        message:
+          "Execute the Observer pattern detection across recent episodic memories and cosmic weather. Update semantic memory with any newly detected correlations or hypotheses.",
+        deliver: false,
+      },
+    });
+
+    logger.info("Successfully seeded intelligence cron jobs.");
+  } catch (err) {
+    logger.warn(`Failed to auto-seed cron jobs: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }

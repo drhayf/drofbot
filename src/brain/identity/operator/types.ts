@@ -13,7 +13,8 @@ export type VaultCategory =
   | "reference_doc"
   | "interaction_pref"
   | "synthesis"
-  | "note";
+  | "note"
+  | "progression";
 
 export type VaultSource =
   | "conversation_analysis"

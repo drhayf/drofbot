@@ -52,7 +52,7 @@ import { NodeRegistry } from "./node-registry.js";
 import { createChannelManager } from "./server-channels.js";
 import { createAgentEventHandler } from "./server-chat.js";
 import { createGatewayCloseHandler } from "./server-close.js";
-import { buildGatewayCronService } from "./server-cron.js";
+import { buildGatewayCronService, seedCronJobsIfEmpty } from "./server-cron.js";
 import { startGatewayDiscovery } from "./server-discovery-runtime.js";
 import { applyGatewayLaneConcurrency } from "./server-lanes.js";
 import { startGatewayMaintenanceTimers } from "./server-maintenance.js";
@@ -788,8 +788,8 @@ export async function startGatewayServer(
   })();
 
   // Initialize the ProgressionEngine with Supabase persistence.
-  // Loads stats from player_stats table; creates default record if none exists.
-  // Wraps addXP() to persist state changes back to Supabase.
+  // Loads stats from the operator_vault table; creates default record if none exists.
+  // Wraps addXP() to persist state changes back to the vault.
   void (async () => {
     try {
       const { ProgressionEngine, createDefaultStats } = await import(
@@ -801,54 +801,45 @@ export async function startGatewayServer(
       );
 
       let stats = createDefaultStats("default");
-      let statsRowId: string | null = null;
 
       // Try to load from Supabase
       if (isSupabaseConfigured()) {
         try {
-          const client = getSupabaseClient();
-          const { data, error } = await client
-            .from("player_stats")
-            .select("*")
-            .eq("operator_id", "default")
-            .single();
+          const { getVaultEntry, upsertVaultEntry } = await import(
+            "../brain/identity/operator/vault.js"
+          );
+          
+          const entry = await getVaultEntry("progression", "stats");
 
-          if (!error && data) {
+          if (entry && entry.content) {
+            const data = entry.content;
             stats = {
-              id: data.id as string,
-              operatorId: (data.operator_id as string) ?? "default",
-              totalXp: (data.total_xp as number) ?? 0,
-              currentLevel: (data.current_level as number) ?? 1,
-              currentRank: (data.current_rank as string as import("../brain/progression/types.js").RankId) ?? "E",
-              syncRate: (data.sync_rate as number) ?? 0,
-              streakDays: (data.streak_days as number) ?? 0,
-              syncHistory: (data.sync_history as import("../brain/progression/types.js").SyncHistoryEntry[]) ?? [],
-              lastActive: (data.last_active as string) ?? null,
+              id: (data.id as string) ?? stats.id,
+              operatorId: (data.operatorId as string) ?? "default",
+              totalXp: (data.totalXp as number) ?? 0,
+              currentLevel: (data.currentLevel as number) ?? 1,
+              currentRank: (data.currentRank as string as import("../brain/progression/types.js").RankId) ?? "E",
+              syncRate: (data.syncRate as number) ?? 0,
+              streakDays: (data.streakDays as number) ?? 0,
+              syncHistory: (data.syncHistory as import("../brain/progression/types.js").SyncHistoryEntry[]) ?? [],
+              lastActive: (data.lastActive as string) ?? null,
             };
-            statsRowId = stats.id;
             log.info(
-              `Progression loaded from Supabase: Level ${stats.currentLevel}, XP ${stats.totalXp}, Rank ${stats.currentRank}`,
+              `Progression loaded from Vault: Level ${stats.currentLevel}, XP ${stats.totalXp}, Rank ${stats.currentRank}`,
             );
           } else {
-            // No record — insert default stats
-            const { error: insertErr } = await client.from("player_stats").insert({
-              id: stats.id,
-              operator_id: stats.operatorId,
-              total_xp: stats.totalXp,
-              current_level: stats.currentLevel,
-              current_rank: stats.currentRank,
-              sync_rate: stats.syncRate,
-              streak_days: stats.streakDays,
-              sync_history: stats.syncHistory,
-              last_active: stats.lastActive,
+            // No record — insert default stats into vault
+            await upsertVaultEntry({
+              category: "progression",
+              key: "stats",
+              content: stats as unknown as Record<string, unknown>,
+              source: "system_observation",
+              confidence: 1.0,
             });
-            if (!insertErr) {
-              statsRowId = stats.id;
-              log.info("Progression: created default stats in Supabase");
-            }
+            log.info("Progression: created default stats in Vault");
           }
         } catch (err) {
-          log.warn(`Progression Supabase load failed, using defaults: ${err instanceof Error ? err.message : String(err)}`);
+          log.warn(`Progression Vault load failed, using defaults: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
 
@@ -859,28 +850,20 @@ export async function startGatewayServer(
       engine.addXP = (amount: number, reason?: string) => {
         const result = originalAddXP(amount, reason);
 
-        // Fire-and-forget Supabase upsert
-        if (isSupabaseConfigured() && statsRowId) {
-          const updated = engine.getStats();
-          const client = getSupabaseClient();
-          client
-            .from("player_stats")
-            .update({
-              total_xp: updated.totalXp,
-              current_level: updated.currentLevel,
-              current_rank: updated.currentRank,
-              sync_rate: updated.syncRate,
-              streak_days: updated.streakDays,
-              sync_history: updated.syncHistory,
-              last_active: updated.lastActive,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", statsRowId)
-            .then(({ error }) => {
-              if (error) {
-                log.warn(`Progression save failed: ${error.message}`);
-              }
+        // Fire-and-forget Vault upsert
+        if (isSupabaseConfigured()) {
+          import("../brain/identity/operator/vault.js").then(({ upsertVaultEntry }) => {
+            const updated = engine.getStats();
+            upsertVaultEntry({
+              category: "progression",
+              key: "stats",
+              content: updated as unknown as Record<string, unknown>,
+              source: "system_observation",
+              confidence: 1.0,
+            }).catch((err) => {
+              log.warn(`Progression save failed: ${err instanceof Error ? err.message : String(err)}`);
             });
+          });
         }
 
         return result;
@@ -929,7 +912,20 @@ export async function startGatewayServer(
     }
   })();
 
-  void cron.start().catch((err) => logCron.error(`failed to start: ${String(err)}`));
+  void (async () => {
+    try {
+      await seedCronJobsIfEmpty(cron);
+      await cron.start();
+      const loadedJobs = await cron.list({ includeDisabled: true });
+      if (loadedJobs.length > 0) {
+        logCron.info(`Loaded ${loadedJobs.length} cron jobs: ${loadedJobs.map((j) => `'${j.name}'`).join(", ")}`);
+      } else {
+        logCron.warn("No cron jobs are currently loaded or seeded.");
+      }
+    } catch (err) {
+      logCron.error(`cron startup/seeding failed: ${String(err)}`);
+    }
+  })();
 
   const execApprovalManager = new ExecApprovalManager();
   const execApprovalForwarder = createExecApprovalForwarder();
