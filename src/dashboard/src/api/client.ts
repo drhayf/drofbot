@@ -155,19 +155,15 @@ export const profileApi = {
 export const vaultApi = {
   getSynthesis: () => api.get<{ synthesis: unknown }>("/vault/synthesis"),
   getVoiceProfile: () => api.get<{ profile: unknown }>("/vault/voice-profile"),
-  getPreferences: () =>
-    api.get<{ preferences: Record<string, unknown> }>("/vault/preferences"),
+  getPreferences: () => api.get<{ preferences: Record<string, unknown> }>("/vault/preferences"),
   getNotes: () => api.get<{ notes: unknown[] }>("/vault/notes"),
   getReferences: () => api.get<{ documents: unknown[] }>("/vault/references"),
 };
 
 export const memoryApi = {
-  getRecent: (limit = 20) =>
-    api.get<{ memories: unknown[] }>(`/memory/recent?limit=${limit}`),
+  getRecent: (limit = 20) => api.get<{ memories: unknown[] }>(`/memory/recent?limit=${limit}`),
   search: (query: string) =>
-    api.get<{ results: unknown[] }>(
-      `/memory/search?q=${encodeURIComponent(query)}`,
-    ),
+    api.get<{ results: unknown[] }>(`/memory/search?q=${encodeURIComponent(query)}`),
   getStats: () => api.get<{ stats: Record<string, { count: number }> }>("/memory/stats"),
 };
 
@@ -200,13 +196,31 @@ export interface CurrentModelInfo {
   name: string | null;
 }
 
+export interface ProviderInfo {
+  id: string;
+  name: string;
+  prefix: string;
+  configured: boolean;
+}
+
 export const modelsApi = {
-  list: (query?: string) =>
-    api.get<{
+  list: (query?: string, provider?: string) => {
+    const params = new URLSearchParams();
+    if (query) {
+      params.set("q", query);
+    }
+    if (provider) {
+      params.set("provider", provider);
+    }
+    const queryString = params.toString();
+    return api.get<{
       models: ModelInfo[];
       total: number;
       cache: { fetchedAt: string | null; stale: boolean };
-    }>(`/models${query ? `?q=${encodeURIComponent(query)}` : ""}`),
+    }>(`/models${queryString ? `?${queryString}` : ""}`);
+  },
+  getProviders: () =>
+    api.get<{ providers: ProviderInfo[]; configured: string[] }>("/models/providers"),
   getCurrent: () => api.get<CurrentModelInfo>("/models/current"),
   setCurrent: (model: string) =>
     api.put<{

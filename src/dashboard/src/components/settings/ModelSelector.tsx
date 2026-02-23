@@ -5,52 +5,60 @@ import { LoadingPulse } from "../shared/LoadingPulse";
 
 /**
  * Model Selector component for the Settings / Forge page.
- * Shows current model, allows browsing/searching OpenRouter models,
+ * Shows current model, allows browsing/searching models from multiple providers,
  * and switching or resetting the active model.
  */
 export function ModelSelector() {
   const {
     models,
     currentModel,
+    providers,
+    selectedProvider,
     isLoading,
     isApplying,
     error,
     searchQuery,
+    fetchProviders,
     fetchModels,
     fetchCurrent,
     setModel,
     clearModel,
     refreshRegistry,
     setSearchQuery,
+    setSelectedProvider,
   } = useModelsStore();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showList, setShowList] = useState(false);
 
+  // Initial load
   useEffect(() => {
+    fetchProviders();
     fetchCurrent();
-  }, [fetchCurrent]);
+  }, [fetchProviders, fetchCurrent]);
 
   const handleSearch = useCallback(
     (q: string) => {
       setSearchQuery(q);
       if (q.trim().length >= 2) {
-        fetchModels(q.trim());
+        fetchModels(q.trim(), selectedProvider ?? undefined);
         setShowList(true);
       } else if (q.trim().length === 0) {
         setShowList(false);
       }
     },
-    [fetchModels, setSearchQuery],
+    [fetchModels, setSearchQuery, selectedProvider],
   );
 
   const handleBrowse = useCallback(() => {
-    fetchModels(searchQuery || undefined);
+    fetchModels(searchQuery || undefined, selectedProvider ?? undefined);
     setShowList(true);
-  }, [fetchModels, searchQuery]);
+  }, [fetchModels, searchQuery, selectedProvider]);
 
   const handleApply = useCallback(async () => {
-    if (!selectedId) return;
+    if (!selectedId) {
+      return;
+    }
     await setModel(selectedId);
     setSelectedId(null);
     setShowList(false);
@@ -60,6 +68,15 @@ export function ModelSelector() {
     await clearModel();
     setSelectedId(null);
   }, [clearModel]);
+
+  const handleProviderChange = useCallback(
+    (provider: string) => {
+      setSelectedProvider(provider);
+      setSelectedId(null);
+      setShowList(false);
+    },
+    [setSelectedProvider],
+  );
 
   const selectedModel = models.find((m) => m.id === selectedId);
 
@@ -71,7 +88,7 @@ export function ModelSelector() {
           <button
             onClick={() => refreshRegistry()}
             className="text-xs text-ink-3 hover:text-accent transition-colors"
-            title="Refresh model list from OpenRouter"
+            title="Refresh model list"
           >
             ↻ Refresh
           </button>
@@ -124,12 +141,38 @@ export function ModelSelector() {
             </button>
           )}
 
+          {/* Provider Selector */}
+          {providers.length > 0 && (
+            <div>
+              <p className="text-sm text-ink-2 mb-2">Provider</p>
+              <div className="flex flex-wrap gap-2">
+                {providers.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleProviderChange(p.id)}
+                    disabled={!p.configured}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                      selectedProvider === p.id
+                        ? "bg-accent text-white"
+                        : p.configured
+                          ? "bg-ground-3 text-ink-2 hover:bg-ground-4"
+                          : "bg-ground-2 text-ink-4 cursor-not-allowed"
+                    }`}
+                  >
+                    {p.name}
+                    {!p.configured && " (not configured)"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Search / Browse */}
           <div>
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Search models (e.g. claude, gpt, deepseek)..."
+                placeholder={`Search ${selectedProvider === "anthropic" ? "Anthropic" : "OpenRouter"} models...`}
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 className="flex-1 bg-surface-inset border border-border rounded-lg px-3 py-2 text-sm text-ink-1 placeholder:text-ink-3"

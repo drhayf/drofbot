@@ -873,10 +873,22 @@ export function renderApp(state: AppViewState) {
                   if (!configValue) {
                     return;
                   }
-                  const list = (configValue as { agents?: { list?: unknown[] } }).agents?.list;
+
+                  // Get or create agents.list
+                  const agents = (configValue as { agents?: unknown }).agents;
+                  let list =
+                    agents && typeof agents === "object" && "list" in agents
+                      ? (agents as { list?: unknown }).list
+                      : undefined;
+
                   if (!Array.isArray(list)) {
+                    // agents.list doesn't exist or isn't an array - create it with the new agent entry
+                    const newList = [{ id: agentId, model: modelId }];
+                    updateConfigFormValue(state, ["agents", "list"], newList);
                     return;
                   }
+
+                  // agents.list exists and is an array
                   const index = list.findIndex(
                     (entry) =>
                       entry &&
@@ -884,9 +896,14 @@ export function renderApp(state: AppViewState) {
                       "id" in entry &&
                       (entry as { id?: string }).id === agentId,
                   );
+
                   if (index < 0) {
+                    // Agent not in list, add it
+                    const newList = [...list, { id: agentId, model: modelId }];
+                    updateConfigFormValue(state, ["agents", "list"], newList);
                     return;
                   }
+
                   const basePath = ["agents", "list", index, "model"];
                   if (!modelId) {
                     removeConfigFormValue(state, basePath);
@@ -909,10 +926,24 @@ export function renderApp(state: AppViewState) {
                   if (!configValue) {
                     return;
                   }
-                  const list = (configValue as { agents?: { list?: unknown[] } }).agents?.list;
+
+                  // Get or create agents.list
+                  const agents = (configValue as { agents?: unknown }).agents;
+                  let list =
+                    agents && typeof agents === "object" && "list" in agents
+                      ? (agents as { list?: unknown }).list
+                      : undefined;
+
                   if (!Array.isArray(list)) {
+                    // agents.list doesn't exist - create it with the new agent entry
+                    const normalized = fallbacks.map((name) => name.trim()).filter(Boolean);
+                    if (normalized.length > 0) {
+                      const newList = [{ id: agentId, model: { fallbacks: normalized } }];
+                      updateConfigFormValue(state, ["agents", "list"], newList);
+                    }
                     return;
                   }
+
                   const index = list.findIndex(
                     (entry) =>
                       entry &&
@@ -920,9 +951,17 @@ export function renderApp(state: AppViewState) {
                       "id" in entry &&
                       (entry as { id?: string }).id === agentId,
                   );
+
                   if (index < 0) {
+                    // Agent not in list, add it with fallbacks
+                    const normalized = fallbacks.map((name) => name.trim()).filter(Boolean);
+                    if (normalized.length > 0) {
+                      const newList = [...list, { id: agentId, model: { fallbacks: normalized } }];
+                      updateConfigFormValue(state, ["agents", "list"], newList);
+                    }
                     return;
                   }
+
                   const basePath = ["agents", "list", index, "model"];
                   const entry = list[index] as { model?: unknown };
                   const normalized = fallbacks.map((name) => name.trim()).filter(Boolean);
