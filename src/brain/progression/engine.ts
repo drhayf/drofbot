@@ -144,7 +144,7 @@ export class ProgressionEngine {
     questType: QuestType;
     difficulty: QuestDifficulty;
     source?: QuestSource;
-    cosmicAlignment?: number;
+    cosmicAlignment?: string;
     insightId?: string;
     expiresAt?: Date;
     metadata?: Record<string, unknown>;
@@ -344,7 +344,7 @@ export class ProgressionEngine {
       for (const q of activeQuests.slice(0, 5)) {
         const alignment =
           q.cosmicAlignment !== null
-            ? ` (alignment: ${(q.cosmicAlignment * 100).toFixed(0)}%)`
+            ? ` (alignment: ${q.cosmicAlignment})`
             : "";
         parts.push(`  [${q.questType.toUpperCase()}] ${q.title} — ${q.xpReward} XP${alignment}`);
       }

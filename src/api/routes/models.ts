@@ -11,6 +11,11 @@
 
 import { Router, type Request, type Response } from "express";
 import {
+  ensureAuthProfileStore,
+  listProfilesForProvider,
+} from "../../brain/agent-runner/auth-profiles.js";
+import { resolveEnvApiKey } from "../../brain/agent-runner/model-auth.js";
+import {
   getActiveModel,
   setModelPreference,
   clearModelPreference,
@@ -53,18 +58,23 @@ const PROVIDERS: Record<string, { name: string; prefix: string; models: string[]
 };
 
 /**
- * Detect which providers are configured (have API keys).
+ * Detect which providers are configured (have API keys or auth profiles).
  */
 function detectConfiguredProviders(): string[] {
   const configured: string[] = [];
 
-  // OpenRouter is configured if the API key exists
-  if (process.env.DROFBOT_LLM_API_KEY || process.env.OPENROUTER_API_KEY) {
+  // OpenRouter is configured if the API key exists (env or auth profile)
+  const openrouterEnv = process.env.DROFBOT_LLM_API_KEY || process.env.OPENROUTER_API_KEY;
+  const store = ensureAuthProfileStore();
+  const openrouterProfiles = listProfilesForProvider(store, "openrouter");
+  if (openrouterEnv || openrouterProfiles.length > 0) {
     configured.push("openrouter");
   }
 
-  // Anthropic is configured if the API key exists
-  if (process.env.ANTHROPIC_API_KEY) {
+  // Anthropic is configured if API key exists (env, auth profile, or OAuth token)
+  const anthropicEnv = resolveEnvApiKey("anthropic");
+  const anthropicProfiles = listProfilesForProvider(store, "anthropic");
+  if (anthropicEnv || anthropicProfiles.length > 0) {
     configured.push("anthropic");
   }
 

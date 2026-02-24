@@ -294,7 +294,7 @@ export function generateCosmicAlert(
  * @param tz  Operator's timezone (default: UTC)
  * @param channel  Delivery channel (default: "last" — most recent channel)
  */
-export function createBriefingJobDefs(tz = "UTC", channel: string = "last"): CronJobCreate[] {
+export function createBriefingJobDefs(tz = "UTC", channel: string = "telegram"): CronJobCreate[] {
   const base = {
     enabled: true,
     sessionTarget: "isolated" as const,

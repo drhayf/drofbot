@@ -24,7 +24,7 @@ const CORRUPTION_PATTERNS = [
   /\bexport\s+(default\s+)?/, // Export statements
   /\b(?:interface|type|enum)\s+\w+\s*{/, // TypeScript type declarations
   /node_modules\//, // File paths
-  /\.(ts|js|tsx|jsx|py|json)\b/, // File extensions in non-path context
+  /\s\.(ts|js|tsx|jsx|py|json)\b/, // File extensions in non-path context (must be preceded by whitespace)
   /\basync\s+function\b/, // Async function declarations
   /\bclass\s+\w+/, // Class declarations
   /\blet\s+\w+\s*=/, // Let declarations

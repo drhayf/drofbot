@@ -887,7 +887,7 @@ export async function startGatewayServer(
               difficulty: (row.difficulty as import("../brain/progression/types.js").QuestDifficulty) ?? "medium",
               xpReward: (row.xp_reward as number) ?? 100,
               status: row.status as import("../brain/progression/types.js").QuestStatus,
-              cosmicAlignment: (row.cosmic_alignment as number) ?? null,
+              cosmicAlignment: (row.cosmic_alignment as string) ?? null,
               insightId: (row.insight_id as string) ?? null,
               source: (row.source as import("../brain/progression/types.js").QuestSource) ?? "agent",
               assignedAt: new Date(row.assigned_at as string),

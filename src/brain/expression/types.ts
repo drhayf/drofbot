@@ -94,11 +94,11 @@ export interface ThrottleConfig {
 }
 
 export const DEFAULT_THROTTLE_CONFIG: ThrottleConfig = {
-  maxPerDay: 3,
-  cooldownMs: 3 * 60 * 60 * 1000, // 3 hours
-  quietHoursStart: 23,
-  quietHoursEnd: 7,
-  topicCooldownMs: 48 * 60 * 60 * 1000, // 48 hours
+  maxPerDay: 100, // effectively unrestricted
+  cooldownMs: 0, // No cooldown
+  quietHoursStart: 0,
+  quietHoursEnd: 0, // No quiet hours
+  topicCooldownMs: 0, // No topic cooldown
 };
 
 // ─── Expression Engine Dependencies ────────────────────────────

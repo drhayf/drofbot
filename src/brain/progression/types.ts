@@ -131,7 +131,7 @@ export interface Quest {
   difficulty: QuestDifficulty;
   xpReward: number;
   status: QuestStatus;
-  cosmicAlignment: number | null;
+  cosmicAlignment: string | null;
   insightId: string | null;
   source: QuestSource;
   assignedAt: Date;

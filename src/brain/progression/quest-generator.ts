@@ -26,7 +26,7 @@ export interface QuestTemplate {
   description: string;
   questType: QuestType;
   difficulty: QuestDifficulty;
-  cosmicAlignment: number | null;
+  cosmicAlignment: string | null;
   insightId: string | null;
   metadata: Record<string, unknown>;
 }
@@ -48,7 +48,7 @@ export function generateCosmicQuests(
     if (quest) {
       // Apply harmonic resonance as cosmic alignment
       if (harmonic) {
-        quest.cosmicAlignment = harmonic.overallResonance;
+        quest.cosmicAlignment = `${(harmonic.overallResonance * 100).toFixed(0)}% resonance`;
       }
       templates.push(quest);
     }

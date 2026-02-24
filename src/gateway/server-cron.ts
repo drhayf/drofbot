@@ -149,7 +149,7 @@ export async function seedCronJobsIfEmpty(cron: CronService) {
       schedule: { kind: "cron", expr: "*/45 * * * *", tz },
       sessionTarget: "isolated",
       wakeMode: "now",
-      delivery: { mode: "announce" },
+      delivery: { mode: "announce", channel: "telegram" },
       payload: {
         kind: "agentTurn",
         message:
@@ -172,6 +172,23 @@ export async function seedCronJobsIfEmpty(cron: CronService) {
         message:
           "Execute the Observer pattern detection across recent episodic memories and cosmic weather. Update semantic memory with any newly detected correlations or hypotheses.",
         deliver: false,
+      },
+    });
+
+    // 5. Intelligent Quest Generator (Daily at 08:00 AEDT / 21:00 UTC)
+    await cron.add({
+      name: "quest-generator",
+      enabled: true,
+      description: "Generates 1 to 3 personalized, context-aware quests daily.",
+      schedule: { kind: "cron", expr: "0 21 * * *", tz }, // 08:00 next day AEDT
+      sessionTarget: "isolated",
+      wakeMode: "now",
+      delivery: { mode: "announce", channel: "telegram" },
+      payload: {
+        kind: "agentTurn",
+        message:
+          "Act as the Progression Architect. Synthesize the operator's identity profile, current cosmic alignment (solar weather/astrology), and recent quest history. Using the `quest_create` tool, generate 1 to 3 highly personalized, philosophical, or actionable quests (daily, cosmic, or growth). Deliver a Telegram message informing the operator of their new directives.",
+        deliver: true,
       },
     });
 
