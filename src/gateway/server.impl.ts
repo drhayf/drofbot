@@ -606,13 +606,6 @@ export async function startGatewayServer(
           log.warn(`Observer initial cycle failed: ${err instanceof Error ? err.message : String(err)}`),
         );
       }, 30_000); // 30 second delay
-
-      // Schedule periodic runs
-      setInterval(() => {
-        runCycle().catch((err) =>
-          log.warn(`Observer periodic cycle failed: ${err instanceof Error ? err.message : String(err)}`),
-        );
-      }, OBSERVER_INTERVAL_MS);
     } catch (err) {
       log.warn(`Observer runner init failed: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -771,13 +764,6 @@ export async function startGatewayServer(
           log.warn(`Expression initial eval failed: ${err instanceof Error ? err.message : String(err)}`),
         );
       }, 120_000); // 2 minute delay
-
-      // Schedule periodic evaluations
-      setInterval(() => {
-        evaluateExpressions(buildDeps()).catch((err) =>
-          log.warn(`Expression eval failed: ${err instanceof Error ? err.message : String(err)}`),
-        );
-      }, EXPRESSION_INTERVAL_MS);
 
       log.info(
         `Expression evaluator scheduled (every 45m, delivery=${operatorChatId ? "enabled" : "disabled"})`,

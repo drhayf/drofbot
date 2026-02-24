@@ -170,7 +170,7 @@ export async function seedCronJobsIfEmpty(cron: CronService) {
       payload: {
         kind: "agentTurn",
         message:
-          "Execute the Observer pattern detection across recent episodic memories and cosmic weather. Update semantic memory with any newly detected correlations or hypotheses.",
+          "Execute the Observer pattern detection across recent episodic memories and cosmic weather. Update semantic memory with any newly detected correlations or hypotheses. If a wildly significant pattern or profound identity shift is identified, you may use the `quest_create` tool to assign a relevant introspective quest.",
         deliver: false,
       },
     });
