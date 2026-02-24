@@ -434,6 +434,52 @@ export function createPatternDetailTool(): AnyAgentTool {
   };
 }
 
+const EpisodicMemoryRecentSchema = Type.Object({
+  lookbackDays: Type.Optional(
+    Type.Number({ description: "Number of days to look back. Default 7." }),
+  ),
+  limit: Type.Optional(
+    Type.Number({ description: "Max number of entries to return. Default 50, max 200." }),
+  ),
+});
+
+export function createEpisodicMemoryTool(): AnyAgentTool {
+  return {
+    label: "Episodic Memory Recent",
+    name: "episodic_memory_recent",
+    description:
+      "Fetch recent episodic memory entries (journal logs, operator interactions, mood, cosmic state) for deep cognitive pattern matching and observation.",
+    parameters: EpisodicMemoryRecentSchema,
+    execute: async (_toolCallId, params) => {
+      const { getDrofbotMemory } = await import("../memory/drofbot-memory.js");
+      const memory = getDrofbotMemory();
+
+      if (!memory.isStructuredMemoryAvailable) {
+        return jsonResult({ error: "Structured episodic memory is unavailable.", entries: [] });
+      }
+
+      const lookbackDays = readNumberParam(params, "lookbackDays") ?? 7;
+      const limit = Math.min(readNumberParam(params, "limit") ?? 50, 200);
+
+      const entries = await memory.episodic.getRecent(limit, {
+        after: new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000).toISOString(),
+      });
+
+      return jsonResult({
+        count: entries.length,
+        entries: entries.map((e) => ({
+          id: e.id,
+          content: e.content,
+          createdAt: new Date(e.created_at).toISOString(),
+          mood: (e.context as Record<string, unknown> | null)?.mood,
+          energy: (e.context as Record<string, unknown> | null)?.energy,
+          cosmic: (e.context as Record<string, unknown> | null)?.cosmic,
+        })),
+      });
+    },
+  };
+}
+
 // ─── Convenience: all intelligence tools ───────────────────────
 
 export function createIntelligenceTools(): AnyAgentTool[] {
@@ -445,5 +491,6 @@ export function createIntelligenceTools(): AnyAgentTool[] {
     createHypothesisCreateTool(),
     createPatternListTool(),
     createPatternDetailTool(),
+    createEpisodicMemoryTool(),
   ];
 }

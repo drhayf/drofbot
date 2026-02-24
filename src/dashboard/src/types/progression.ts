@@ -31,6 +31,9 @@ export interface Quest {
   difficulty: string;
   status: string;
   xpReward: number;
+  source: string;
+  questType?: string;
+  cosmicAlignment?: string | null;
   createdAt: string;
   completedAt?: string;
 }

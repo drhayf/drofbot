@@ -1,4 +1,4 @@
-import { Plus, ArrowUpDown, Clock, Zap, Star } from "lucide-react";
+import { Plus, ArrowUpDown, Clock, Zap, Star, Sparkles } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { Badge } from "../components/shared/Badge";
 import { Card, CardContent, CardHeader } from "../components/shared/Card";
@@ -188,17 +188,34 @@ export default function Quests() {
           />
         ) : (
           <div className="space-y-3">
-            {active.map((quest) => (
-              <Card key={quest.id}>
-                <CardContent className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-ink-1">{quest.title}</h3>
-                    <p className="text-xs text-ink-2 mt-1">{quest.description}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="accent">{quest.difficulty}</Badge>
-                      <Badge variant="muted">+{quest.xpReward} XP</Badge>
+            {active.map((quest) => {
+              const isAgent = quest.source === "agent";
+              return (
+                <Card 
+                  key={quest.id} 
+                  className={isAgent ? "border-accent/50 shadow-[0_0_15px_rgba(235,165,55,0.15)] relative overflow-hidden" : ""}
+                >
+                  {isAgent && (
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-accent/10 to-transparent pointer-events-none" />
+                  )}
+                  <CardContent className="flex items-start justify-between gap-4 relative z-10">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        {isAgent && <Sparkles className="w-3.5 h-3.5 text-accent" />}
+                        <h3 className={`text-sm font-medium ${isAgent ? 'text-accent' : 'text-ink-1'}`}>{quest.title}</h3>
+                      </div>
+                      <p className="text-xs text-ink-2 mt-1">{quest.description}</p>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <Badge variant="accent">{quest.difficulty}</Badge>
+                        <Badge variant="muted">+{quest.xpReward} XP</Badge>
+                        {quest.questType && (
+                          <Badge variant="default" className="opacity-70">{quest.questType}</Badge>
+                        )}
+                        {quest.cosmicAlignment && (
+                          <Badge variant="default" className="opacity-70 italic">{quest.cosmicAlignment}</Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
                   <div className="shrink-0">
                     {completing === quest.id ? (
                       <div className="space-y-2">
@@ -235,7 +252,8 @@ export default function Quests() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

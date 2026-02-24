@@ -129,14 +129,14 @@ export async function seedCronJobsIfEmpty(cron: CronService) {
       name: "synthesis-runner",
       enabled: true,
       description: "Generates the Master Synthesis and Operator Profile every 8 hours.",
-      schedule: { kind: "cron", expr: "0 */8 * * *", tz },
+      schedule: { kind: "cron", expr: "0 */4 * * *", tz },
       sessionTarget: "isolated",
       wakeMode: "now",
       delivery: { mode: "none" },
       payload: {
         kind: "agentTurn",
         message:
-          "Run a full synthesis cycle. Synthesize the Master Synthesis context along with the operator profile, so it's fresh for the next session.",
+          "Run a full synthesis cycle. Synthesize the Master Synthesis context along with the operator profile. Critically: If you detect structural paradigm shifts in the operator's identity or state, use your file writing tools to explicitly update 'workspace/SOUL.md', 'workspace/memory/MEMORY.md', and 'workspace/memory/OPERATOR.md'. This is a primary function. You MUST also use `quest_create` if this synthesis necessitates a priority structural quest.",
         deliver: false,
       },
     });
@@ -153,24 +153,24 @@ export async function seedCronJobsIfEmpty(cron: CronService) {
       payload: {
         kind: "agentTurn",
         message:
-          "Check the expression engine. If there is a highly significant convergence of cosmic data, hypotheses, or patterns across Council systems, compose a spontaneous message to the operator. If nothing meets the threshold, output nothing.",
+          "Check the expression engine. If there is a highly significant convergence of cosmic data, hypotheses, or patterns across Council systems, compose a spontaneous message to the operator. This system is heavily prioritized for generating actionable outputs—if the significance is profound, you MUST use the `quest_create` tool to assign a relevant integration task. If nothing meets the threshold, output nothing.",
         deliver: true,
       },
     });
 
-    // 4. Observer Cycle (Every 6 hours)
+    // 4. Observer Cycle (Every 4 hours)
     await cron.add({
       name: "observer-cycle",
       enabled: true,
       description: "Runs the cyclical pattern Observer every 6 hours.",
-      schedule: { kind: "cron", expr: "0 */6 * * *", tz },
+      schedule: { kind: "cron", expr: "0 */4 * * *", tz },
       sessionTarget: "isolated",
       wakeMode: "now",
       delivery: { mode: "none" },
       payload: {
         kind: "agentTurn",
         message:
-          "Execute the Observer pattern detection across recent episodic memories and cosmic weather. Update semantic memory with any newly detected correlations or hypotheses. If a wildly significant pattern or profound identity shift is identified, you may use the `quest_create` tool to assign a relevant introspective quest.",
+          "Execute the Cognitive Observer cycle. First, use `episodic_memory_recent` to pull the latest journal logs, moods, and cosmic transits. Cross-reference this immediate temporal reality with my overarching behavioral and cognitive architecture defined in `workspace/memory/OPERATOR.md` and `workspace/SOUL.md`. Your goal is to detect non-obvious, deeply philosophical, or highly nuanced psychological patterns. If a significant pattern or correlation is found, boldly use `hypothesis_create` to insert it into semantic memory. Your PRIMARY overarching directive: if a wildly significant pattern or profound identity shift is identified that requires structural transformation, you MUST use the `quest_create` tool to immediately assign a priority introspective or structural quest to the operator.",
         deliver: false,
       },
     });
