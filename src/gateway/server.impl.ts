@@ -560,6 +560,28 @@ export async function startGatewayServer(
     }
   })();
 
+  // Live Model Sync — fetch latest OpenRouter/Anthropic models in the background
+  void (async () => {
+    try {
+      const { syncLiveModels } = await import("../brain/model-routing/live-sync.js");
+      const { __resetModelCatalogCacheForTest } = await import("./server-model-catalog.js");
+      const SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours
+      const doSync = async () => {
+        try {
+          await syncLiveModels();
+          __resetModelCatalogCacheForTest(); // force native catalog cache to rebuild
+        } catch (err) {
+          log.warn(`Model sync failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      };
+      // Run first sync 10 seconds after boot to not block startup
+      setTimeout(doSync, 10000);
+      setInterval(doSync, SYNC_INTERVAL_MS);
+    } catch (err) {
+      log.warn(`Failed to initialize live model sync: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  })();
+
   // Observer runner — every 6 hours, detect patterns in episodic memory.
   // Fire-and-forget — gateway startup should not block on first cycle.
   void (async () => {

@@ -184,6 +184,9 @@ function resolveApiKeyFromProfiles(params: {
     if (cred.type === "token") {
       return cred.token;
     }
+    if (cred.type === "oauth") {
+      return "oauth_token_present";
+    }
   }
   return undefined;
 }
@@ -441,6 +444,9 @@ export function buildQianfanProvider(): ProviderConfig {
   };
 }
 
+import fs from "node:fs/promises";
+import path from "node:path";
+
 export async function resolveImplicitProviders(params: {
   agentDir: string;
 }): Promise<ModelsConfig["providers"]> {
@@ -448,6 +454,29 @@ export async function resolveImplicitProviders(params: {
   const authStore = ensureAuthProfileStore(params.agentDir, {
     allowKeychainPrompt: false,
   });
+
+  // Try to load the live sync cache
+  let liveCache: import("../model-routing/live-sync.js").LiveProviderCache | null = null;
+  try {
+    const raw = await fs.readFile(path.join(params.agentDir, "live-provider-cache.json"), "utf8");
+    liveCache = JSON.parse(raw);
+  } catch (err) {
+    // Ignore missing cache or parse errors
+  }
+
+  const anthropicKey =
+    resolveEnvApiKeyVarName("anthropic") ??
+    resolveApiKeyFromProfiles({ provider: "anthropic", store: authStore });
+  if (anthropicKey && liveCache?.anthropic) {
+    providers.anthropic = { ...liveCache.anthropic, apiKey: anthropicKey };
+  }
+
+  const openrouterKey =
+    resolveEnvApiKeyVarName("openrouter") ??
+    resolveApiKeyFromProfiles({ provider: "openrouter", store: authStore });
+  if (openrouterKey && liveCache?.openrouter) {
+    providers.openrouter = { ...liveCache.openrouter, apiKey: openrouterKey };
+  }
 
   const minimaxKey =
     resolveEnvApiKeyVarName("minimax") ??

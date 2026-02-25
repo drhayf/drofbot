@@ -10,10 +10,13 @@
  */
 
 import { Router, type Request, type Response } from "express";
+import fs from "node:fs/promises";
+import path from "node:path";
 import {
   ensureAuthProfileStore,
   listProfilesForProvider,
 } from "../../brain/agent-runner/auth-profiles.js";
+import { resolveOpenClawAgentDir } from "../../brain/agent-runner/agent-paths.js";
 import { resolveEnvApiKey } from "../../brain/agent-runner/model-auth.js";
 import {
   getActiveModel,
@@ -29,31 +32,21 @@ import {
   formatPricing,
 } from "../../brain/model-routing/registry.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import type { LiveProviderCache } from "../../brain/model-routing/live-sync.js";
 
 const log = createSubsystemLogger("dashboard-api/models");
 
 export const modelsRouter: Router = Router();
 
-// Provider definitions with their model prefixes and display names
-const PROVIDERS: Record<string, { name: string; prefix: string; models: string[] }> = {
+// Provider definitions basic info
+const PROVIDERS: Record<string, { name: string; prefix: string }> = {
   openrouter: {
     name: "OpenRouter",
     prefix: "", // OpenRouter models already have provider/model format
-    models: [], // Populated dynamically from registry
   },
   anthropic: {
     name: "Anthropic (Direct)",
     prefix: "anthropic/",
-    models: [
-      "claude-sonnet-4-5-20250929",
-      "claude-sonnet-4-20250514",
-      "claude-3-7-sonnet-20250219",
-      "claude-3-5-sonnet-20241022",
-      "claude-3-opus-20240229",
-      "claude-3-haiku-20240307",
-      "claude-opus-4-5-20250929",
-      "claude-opus-4-20250514",
-    ],
   },
 };
 
@@ -104,7 +97,7 @@ modelsRouter.get("/providers", async (_req: Request, res: Response) => {
 
 /**
  * GET /api/models
- * List available models from the OpenRouter registry (cached).
+ * List available models from the live sync cache (Anthropic & OpenRouter).
  * Optional query params:
  *   ?q=search_term - Filter models by search term
  *   ?provider=openrouter|anthropic - Filter by provider
@@ -112,63 +105,85 @@ modelsRouter.get("/providers", async (_req: Request, res: Response) => {
 modelsRouter.get("/", async (req: Request, res: Response) => {
   try {
     const query = (req.query.q as string | undefined)?.trim();
-    const provider = (req.query.provider as string | undefined)?.trim().toLowerCase();
+    const providerReq = (req.query.provider as string | undefined)?.trim().toLowerCase();
 
-    // If requesting Anthropic models specifically
-    if (provider === "anthropic") {
-      const anthropicProvider = PROVIDERS.anthropic;
-      const models = anthropicProvider.models.map((modelId) => ({
-        id: `${anthropicProvider.prefix}${modelId}`,
-        name: modelId.replace(/-/g, " ").replace(/^claude /i, "Claude "),
-        provider: "anthropic",
-        promptPrice: 3, // Approximate Anthropic pricing
-        completionPrice: 15,
-        contextLength: 200000,
-        pricing: "See Anthropic pricing",
-      }));
+    const unifiedModels: any[] = [];
+    let fetchedAt: string | null = null;
+    let fallbackOpenRouter = true;
 
-      let filtered = models;
-      if (query) {
-        const q = query.toLowerCase();
-        filtered = models.filter(
-          (m) => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q),
-        );
+    try {
+      const raw = await fs.readFile(path.join(resolveOpenClawAgentDir(), "live-provider-cache.json"), "utf8");
+      const liveCache = JSON.parse(raw) as LiveProviderCache;
+      fetchedAt = new Date(liveCache.updatedAtMs).toISOString();
+
+      if (liveCache.anthropic?.models) {
+         for (const m of liveCache.anthropic.models) {
+             unifiedModels.push({
+                 id: `${PROVIDERS.anthropic.prefix}${m.id}`,
+                 name: m.name,
+                 provider: "anthropic",
+                 promptPrice: m.cost?.input ?? 3,
+                 completionPrice: m.cost?.output ?? 15,
+                 contextLength: m.contextWindow ?? 200000,
+                 pricing: "See provider pricing",
+             });
+         }
       }
 
-      return res.json({
-        models: filtered,
-        total: filtered.length,
-        cache: { fetchedAt: null, stale: false },
-      });
+      if (liveCache.openrouter?.models) {
+         fallbackOpenRouter = false; // Cache has OpenRouter data
+         for (const m of liveCache.openrouter.models) {
+             unifiedModels.push({
+                 id: m.id,
+                 name: m.name,
+                 provider: "openrouter",
+                 promptPrice: m.cost?.input ?? 0,
+                 completionPrice: m.cost?.output ?? 0,
+                 contextLength: m.contextWindow ?? 128000,
+                 pricing: `Prompt: $${m.cost?.input}/M | Comp: $${m.cost?.output}/M`,
+             });
+         }
+      }
+    } catch {
+       // Cache not found or invalid
     }
 
-    // Default: OpenRouter models
-    const allModels = await fetchModels();
+    if (fallbackOpenRouter) {
+         const allModels = await fetchModels();
+         for (const m of allModels) {
+             unifiedModels.push({
+                 id: m.id,
+                 name: m.name,
+                 provider: m.provider,
+                 promptPrice: m.promptPrice,
+                 completionPrice: m.completionPrice,
+                 contextLength: m.contextLength,
+                 pricing: formatPricing(m),
+             });
+         }
+         fetchedAt = getCacheInfo().fetchedAt ? new Date(getCacheInfo().fetchedAt).toISOString() : null;
+    }
 
-    let models = allModels;
+    // Filter by provider
+    let filtered = unifiedModels;
+    if (providerReq) {
+        filtered = filtered.filter(m => m.provider === providerReq);
+    }
+
+    // Filter by search query
     if (query) {
       const q = query.toLowerCase();
-      models = allModels.filter(
+      filtered = filtered.filter(
         (m) => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q),
       );
     }
 
-    const cache = getCacheInfo();
-
     res.json({
-      models: models.map((m) => ({
-        id: m.id,
-        name: m.name,
-        provider: m.provider,
-        promptPrice: m.promptPrice,
-        completionPrice: m.completionPrice,
-        contextLength: m.contextLength,
-        pricing: formatPricing(m),
-      })),
-      total: models.length,
+      models: filtered,
+      total: filtered.length,
       cache: {
-        fetchedAt: cache.fetchedAt ? new Date(cache.fetchedAt).toISOString() : null,
-        stale: cache.stale,
+        fetchedAt,
+        stale: false, // The sync runs on interval now
       },
     });
   } catch (err) {
